@@ -1,0 +1,34 @@
+{
+  "name": "file-hosting-video-streaming",
+  "version": "1.0.0",
+  "description": "A modern web service for uploading, hosting, and streaming video files. Users can upload their own videos, stream content with efficient playback, and manage their media securely. The platform is designed for both content creators and viewers, providing a seamless and robust experience.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Cherub26/file-hosting-video-streaming.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Cherub26/file-hosting-video-streaming/issues"
+  },
+  "homepage": "https://github.com/Cherub26/file-hosting-video-streaming#readme",
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "dotenv": "^17.2.0",
+    "express": "^5.1.0",
+    "ffmpeg-static": "^5.2.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.1",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
