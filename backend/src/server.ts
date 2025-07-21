@@ -2,6 +2,9 @@ import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import cors from 'cors';
+import multer from 'multer';
+import authRouter from './routes/auth';
+import uploadRouter from './routes/upload';
 
 dotenv.config();
 
@@ -18,10 +21,17 @@ app.use(cors({
 // Serve static files from public
 app.use(express.static(path.join(__dirname, '../public')));
 
+
+// Multer setup for local uploads (temp folder)
+const upload = multer({ dest: path.join(__dirname, '../../uploads/') });
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK' });
 });
+
+app.use('/api/auth', authRouter);
+app.use('/api', uploadRouter);
 
 
 app.listen(PORT, () => {

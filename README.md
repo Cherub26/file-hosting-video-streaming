@@ -7,11 +7,12 @@ A modern web service for uploading, hosting, and streaming video files. Users ca
 ## 🚀 Features
 
 - Secure user authentication (registration & login)
-- Video upload with file validation (using Multer)
+- Video and file upload with type/size validation
+- Public/private file visibility and sharing
 - Efficient video streaming with Range support (HTML5 video)
 - Automatic thumbnail generation from uploaded videos (FFmpeg)
-- User dashboard for managing uploaded videos
-- Search and sort: search by title, sort by date/likes
+- User dashboard to manage uploaded files
+- Modern, responsive UI built with React & Tailwind CSS
 - Role-based access: admin panel for content and user management
 
 ---
@@ -21,17 +22,18 @@ A modern web service for uploading, hosting, and streaming video files. Users ca
 ### Functional Requirements
 
 1. **User Registration & Authentication**
-   - Users must be able to register and log in securely.
+   - Users can register and log in securely.
    - JWT-based authentication for session management.
-2. **Video Upload**
-   - Users can upload video files.
+2. **File & Video Upload**
+   - Users can upload video and other files.
    - Uploaded files are validated for type and size.
-   - Thumbnails are generated automatically using FFmpeg.
+   - Thumbnails are generated automatically for videos using FFmpeg.
+   - Users can set files as public or private.
 3. **Video Streaming**
    - Videos are streamed with support for HTTP Range requests for smooth playback and seeking.
    - Public or restricted access to videos (configurable).
 4. **Content Management**
-   - Users can view, delete, and manage their own videos.
+   - Users can view, delete, and manage their own files and videos.
    - Admins can manage all content and users.
 5. **Search & Discovery**
    - Users can search videos by title.
@@ -49,16 +51,35 @@ A modern web service for uploading, hosting, and streaming video files. Users ca
 
 ## 🛠️ Technology Stack
 
-- **Backend:** Node.js, Express.js
+- **Frontend:** React, Vite, Tailwind CSS, TypeScript
+- **Backend:** Node.js, Express.js, TypeScript
 - **File Upload:** Multer
 - **Video Processing:** FFmpeg
 - **Authentication:** JSON Web Token (JWT)
-- **Database:** PostgreSQL
+- **Database:** PostgreSQL (via Prisma ORM)
+- **Cloud Storage:** Azure Blob Storage
 
 ---
 
 ## 👥 User Roles
 
-- **Visitor:** Can view public videos
-- **User:** Can upload, manage, and interact with videos
+- **Visitor:** Can view public files,videos
+- **User:** Can upload, manage, and interact with their own files,videos
 - **Admin:** Can manage all content and users
+
+---
+
+## 🧑‍💻 Getting Started
+
+### Backend
+1. `cd backend`
+2. Install dependencies: `npm install`
+3. Set up your `.env` file (see `.env.example`)
+4. Run database migrations: `npx prisma migrate deploy`
+5. Start the server: `npm run dev`
+
+### Frontend
+1. `cd frontend`
+2. Install dependencies: `npm install`
+3. Start the development server: `npm run dev`
+4. The app will run on http://localhost:5173 (or your configured Vite port)

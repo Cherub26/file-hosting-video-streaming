@@ -1,0 +1,93 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+//  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  email        String   @unique
+  password_hash String
+  role         String   @default("User")
+  created_at   DateTime @default(now())
+  files        File[]   @relation("UserFiles")
+  blobs        Blob[]   @relation("UserBlobs")
+  accessLogs   AccessLog[]
+  fileAccess   FileAccess[]
+  videos       Video[]  @relation("UserVideos")
+}
+
+model File {
+  id           Int      @id @default(autoincrement())
+  owner_id     Int
+  original_name String
+  blob_name    String @unique
+  type         String
+  size         BigInt?
+  status       String   @default("ready")
+  azure_url    String?
+  visibility   String   @default("public")
+  created_at   DateTime @default(now())
+  owner        User     @relation(fields: [owner_id], references: [id], name: "UserFiles")
+  fileAccess   FileAccess[]
+}
+
+model FileAccess {
+  id       Int  @id @default(autoincrement())
+  file_id  Int
+  user_id  Int
+  file     File @relation(fields: [file_id], references: [id])
+  user     User @relation(fields: [user_id], references: [id])
+}
+
+model Video {
+  id         Int      @id @default(autoincrement())
+  owner_id   Int
+  title      String
+  file_path  String
+  size       BigInt?
+  status     String   @default("ready")
+  created_at DateTime @default(now())
+  owner      User     @relation("UserVideos", fields: [owner_id], references: [id])
+  accessLogs AccessLog[]
+  metadata   Metadata[]
+}
+
+model Blob {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  temp_path  String
+  status     String   @default("uploading")
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [id], name: "UserBlobs")
+}
+
+model AccessLog {
+  id         Int      @id @default(autoincrement())
+  user_id    Int?
+  video_id   Int
+  action     String
+  access_time DateTime @default(now())
+  user       User?    @relation(fields: [user_id], references: [id])
+  video      Video    @relation(fields: [video_id], references: [id])
+}
+
+model Metadata {
+  id         Int      @id @default(autoincrement())
+  video_id   Int
+  key        String
+  value      String?
+  created_at DateTime @default(now())
+  video      Video    @relation(fields: [video_id], references: [id])
+}
