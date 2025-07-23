@@ -4,8 +4,12 @@ import path from 'path';
 export async function compressVideo(inputPath: string, outputPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
     ffmpeg(inputPath)
-      .outputOptions('-preset veryfast', '-crf 28')
+      .videoCodec('libx264')
+      .outputOptions(['-preset', 'veryfast', '-crf', '28'])
       .toFormat('mp4')
+      .on('start', (commandLine) => {
+        console.log('Spawned ffmpeg with command:', commandLine);
+      })
       .on('end', () => resolve())
       .on('error', (err) => reject(err))
       .save(outputPath);

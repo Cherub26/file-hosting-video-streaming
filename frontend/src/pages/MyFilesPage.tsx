@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../providers/AuthProvider';
+import { FiDownload } from 'react-icons/fi';
+import { Link } from 'react-router-dom';
+import { formatDateTime, formatFileSize } from '../utils/format';
 
 interface FileItem {
   id: number;
+  public_id: string;
   original_name: string;
   blob_name: string;
   type: string;
@@ -45,33 +49,69 @@ export default function MyFilesPage() {
   }, [user]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-3xl bg-white rounded-xl shadow-lg p-8">
+    <div className="min-h-screen bg-gray-50 px-8 pt-8">
+      <div className="w-full bg-white rounded-xl shadow-lg p-8">
         <h2 className="text-3xl font-bold text-blue-600 mb-6">My Files</h2>
         {error && <div className="bg-red-100 text-red-700 border border-red-300 rounded px-4 py-2 mb-4 text-center text-sm">{error}</div>}
         {files.length === 0 ? (
           <div className="text-gray-500">No files uploaded yet.</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse rounded-lg overflow-hidden shadow">
+            <table className="w-full border-collapse rounded-lg overflow-hidden shadow text-left text-base">
               <thead>
                 <tr className="bg-gray-100">
-                  <th className="py-3 px-4 text-left text-blue-600 font-semibold">Name</th>
-                  <th className="py-3 px-4 text-left text-blue-600 font-semibold">Visibility</th>
-                  <th className="py-3 px-4 text-left text-blue-600 font-semibold">Link</th>
+                  <th className="py-3 px-6 text-blue-600 font-semibold min-w-[220px]">Name</th>
+                  <th className="py-3 px-6 text-blue-600 font-semibold min-w-[120px]">Visibility</th>
+                  <th className="py-3 px-6 text-blue-600 font-semibold min-w-[180px]">Uploaded</th>
+                  <th className="py-3 px-6 text-blue-600 font-semibold min-w-[120px] whitespace-nowrap">Size</th>
+                  <th className="py-3 px-6 text-blue-600 font-semibold min-w-[160px] whitespace-nowrap">Type</th>
+                  <th className="py-3 px-6 text-blue-600 font-semibold min-w-[120px] whitespace-nowrap">Download</th>
                 </tr>
               </thead>
               <tbody>
                 {files.map(file => (
-                  <tr key={file.id} className="even:bg-gray-50">
-                    <td className="py-2 px-4">{file.original_name}</td>
-                    <td className="py-2 px-4 capitalize">{file.visibility}</td>
-                    <td className="py-2 px-4">
-                      {file.visibility === 'public' ? (
-                        <a href={file.azure_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">Public Link</a>
-                      ) : (
-                        <span className="text-gray-400">Private</span>
-                      )}
+                  <tr key={file.public_id} className="even:bg-gray-50">
+                    <td className="py-2 px-6 min-w-[220px]">
+                      <Link
+                        to={`/file/${file.public_id}`}
+                        className="text-blue-600 underline font-medium"
+                      >
+                        {file.original_name}
+                      </Link>
+                    </td>
+                    <td className="py-2 px-6 min-w-[120px] capitalize">{file.visibility}</td>
+                    <td className="py-2 px-6 min-w-[180px]">{formatDateTime((file as any).created_at)}</td>
+                    <td className="py-2 px-6 min-w-[120px] whitespace-nowrap">{formatFileSize(file.size)}</td>
+                    <td className="py-2 px-6 min-w-[160px] whitespace-nowrap">{file.type}</td>
+                    <td className="py-2 px-6 min-w-[120px] whitespace-nowrap">
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(`/api/download/${file.public_id}`, {
+                              headers: { Authorization: `Bearer ${user?.token}` },
+                            });
+                            if (!res.ok) {
+                              alert('Failed to download file.');
+                              return;
+                            }
+                            const blob = await res.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = file.original_name;
+                            document.body.appendChild(a);
+                            a.click();
+                            a.remove();
+                            window.URL.revokeObjectURL(url);
+                          } catch {
+                            alert('Failed to download file.');
+                          }
+                        }}
+                        className="text-blue-600 hover:text-black p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-300"
+                        title="Download file"
+                      >
+                        <FiDownload size={20} />
+                      </button>
                     </td>
                   </tr>
                 ))}

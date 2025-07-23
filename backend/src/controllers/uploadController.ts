@@ -5,6 +5,7 @@ import ffmpeg from 'fluent-ffmpeg';
 import fs from 'fs';
 import { Request, Response } from 'express';
 import { compressVideo, generateThumbnail, extractVideoMetadata } from '../services/videoService';
+import { Readable } from 'stream';
 
 const prisma = new PrismaClient();
 const AZURE_CONNECTION_STRING = process.env.AZURE_CONNECTION_STRING || '';
@@ -21,6 +22,8 @@ function convertBigIntToString(obj: any): any {
     for (const key in obj) {
       if (typeof obj[key] === 'bigint') {
         newObj[key] = obj[key].toString();
+      } else if (obj[key] instanceof Date) {
+        newObj[key] = obj[key].toISOString();
       } else if (typeof obj[key] === 'object') {
         newObj[key] = convertBigIntToString(obj[key]);
       } else {
@@ -82,28 +85,26 @@ export async function handleUpload(req: Request, res: Response) {
       await thumbBlockBlobClient.uploadFile(thumbnailPath);
       thumbUrl = thumbBlockBlobClient.url;
 
-      // 5. Clean up local temp files
-      fs.unlinkSync(file.path);
-      fs.unlinkSync(compressedPath);
-      fs.unlinkSync(thumbnailPath);
+      // 5. Get compressed file size
+      const compressedStats = fs.statSync(compressedPath);
 
-      // Insert into files table
-      const fileRecord = await prisma.file.create({
+      // 5.5 Insert into videos table
+      const videoRecord = await prisma.video.create({
         data: {
           owner_id: user.id,
-          original_name: file.originalname,
-          blob_name: azureBlobName,
+          title: file.originalname,
           type: file.mimetype,
-          size: BigInt(file.size),
-          status: 'ready',
           azure_url: azureUrl,
-          visibility,
+          thumb_url: thumbUrl,
+          size: BigInt(compressedStats.size),
+          status: 'ready',
+          // created_at will default to now
         },
       });
 
-      // Store metadata
+      // 6. Store metadata
       const metaEntries = Object.entries(videoMetadata).map(([key, value]) => ({
-        video_id: fileRecord.id,
+        video_id: videoRecord.id,
         key,
         value: value?.toString() || null,
       }));
@@ -111,11 +112,16 @@ export async function handleUpload(req: Request, res: Response) {
         await prisma.metadata.createMany({ data: metaEntries });
       }
 
+      // 7. Clean up local temp files
+      fs.unlinkSync(file.path);
+      fs.unlinkSync(compressedPath);
+      fs.unlinkSync(thumbnailPath);
+
       // Update blobs table (status: ready)
       await prisma.blob.update({ where: { id: blobRecord.id }, data: { status: 'ready' } });
 
       res.json({
-        file: convertBigIntToString(fileRecord),
+        video: convertBigIntToString(videoRecord),
         thumbnail: thumbBlobName,
         azureUrl,
         thumbUrl,
@@ -182,5 +188,85 @@ export async function getVideoMetadata(req: Request, res: Response) {
     res.json({ metadata: metaResult });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch metadata', details: (err && typeof err === 'object' && 'message' in err) ? (err as any).message : String(err) });
+  }
+}
+
+export async function getMyFiles(req: Request, res: Response) {
+  try {
+    const user = (req as any).user;
+    if (!user || !user.id) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const files = await prisma.file.findMany({
+      where: { owner_id: user.id },
+      orderBy: { created_at: 'desc' },
+    });
+    res.json({ files: convertBigIntToString(files) });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch files', details: (err && typeof err === 'object' && 'message' in err) ? (err as any).message : String(err) });
+  }
+}
+
+export async function getMyVideos(req: Request, res: Response) {
+  try {
+    const user = (req as any).user;
+    if (!user || !user.id) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const videos = await prisma.video.findMany({
+      where: { owner_id: user.id },
+      orderBy: { created_at: 'desc' },
+    });
+    res.json({ videos: convertBigIntToString(videos) });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch videos', details: (err && typeof err === 'object' && 'message' in err) ? (err as any).message : String(err) });
+  }
+}
+
+export async function downloadFile(req: Request, res: Response) {
+  try {
+    const user = (req as any).user;
+    const publicId = req.params.id;
+    if (!publicId) return res.status(400).json({ error: 'Missing file id' });
+    const file = await prisma.file.findFirst({ where: { public_id: publicId } });
+    if (!file) return res.status(404).json({ error: 'File not found' });
+    if (file.visibility !== 'public' && (!user || user.id !== file.owner_id)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const blockBlobClient = containerClient.getBlockBlobClient(file.blob_name);
+    const downloadResponse = await blockBlobClient.download();
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(file.original_name)}"`);
+    res.setHeader('Content-Type', file.type || 'application/octet-stream');
+    if (downloadResponse.readableStreamBody) {
+      downloadResponse.readableStreamBody.pipe(res);
+    } else {
+      res.status(500).json({ error: 'Failed to download file' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to download file', details: (err && typeof err === 'object' && 'message' in err) ? (err as any).message : String(err) });
+  }
+}
+
+export async function getFileByPublicId(req: Request, res: Response) {
+  try {
+    const publicId = req.params.id;
+    if (!publicId) return res.status(400).json({ error: 'Missing file id' });
+    const file = await prisma.file.findFirst({ where: { public_id: publicId } });
+    if (!file) return res.status(404).json({ error: 'File not found' });
+    res.json({ file: convertBigIntToString(file) });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch file', details: (err && typeof err === 'object' && 'message' in err) ? (err as any).message : String(err) });
+  }
+}
+
+export async function getVideoByPublicId(req: Request, res: Response) {
+  try {
+    const publicId = req.params.id;
+    if (!publicId) return res.status(400).json({ error: 'Missing video id' });
+    const video = await prisma.video.findFirst({ where: { public_id: publicId } });
+    if (!video) return res.status(404).json({ error: 'Video not found' });
+    res.json({ video: convertBigIntToString(video) });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch video', details: (err && typeof err === 'object' && 'message' in err) ? (err as any).message : String(err) });
   }
 } 

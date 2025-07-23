@@ -2,7 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import { authenticateJWT } from '../middlewares/auth';
-import { handleUpload, getVideoMetadata } from '../controllers/uploadController';
+import { handleUpload, getVideoMetadata, getMyFiles, getMyVideos, downloadFile, getFileByPublicId, getVideoByPublicId } from '../controllers/uploadController';
 import { fileSizeLimit } from '../middlewares/fileSizeLimit';
 
 const router = express.Router();
@@ -18,5 +18,20 @@ router.post('/upload', authenticateJWT, upload.single('video'), fileSizeLimit, h
 
 // Metadata endpoint: GET /metadata
 router.get('/metadata', getVideoMetadata);
+
+// List my files endpoint: GET /my-files
+router.get('/my-files', authenticateJWT, getMyFiles);
+
+// List my videos endpoint: GET /my-videos
+router.get('/my-videos', authenticateJWT, getMyVideos);
+
+// Download file endpoint: GET /download/:id (id is public_id)
+router.get('/download/:id', authenticateJWT, downloadFile);
+
+// Get file details by public_id
+router.get('/file/:id', authenticateJWT, getFileByPublicId);
+
+// Get video details by public_id
+router.get('/video/:id', authenticateJWT, getVideoByPublicId);
 
 export default router; 
