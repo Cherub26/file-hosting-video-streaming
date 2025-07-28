@@ -13,7 +13,6 @@ interface FileItem {
   size: string;
   status: string;
   azure_url: string;
-  visibility: string;
   created_at: string;
 }
 
@@ -24,7 +23,11 @@ export default function FilePage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
+
+
   useEffect(() => {
+    let isMounted = true;
+    
     async function fetchFile() {
       setError('');
       setLoading(true);
@@ -32,23 +35,46 @@ export default function FilePage() {
         const res = await fetch(`/api/file/${id}`, {
           headers: { Authorization: `Bearer ${user?.token}` },
         });
+        
         let data = null;
         try {
           data = await res.json();
-        } catch {}
+        } catch (parseError) {
+          console.error('Failed to parse response:', parseError);
+        }
+        
         if (!res.ok || !data || !data.file) {
-          setError(data?.error || 'File not found or you do not have access.');
-          setLoading(false);
+          if (isMounted) {
+            setError(data?.error || 'File not found or you do not have access.');
+            setLoading(false);
+          }
           return;
         }
-        setFile(data.file);
-      } catch {
-        setError('Failed to fetch file.');
+        
+        if (isMounted) {
+          setFile(data.file);
+        }
+      } catch (fetchError) {
+        console.error('Fetch error:', fetchError);
+        if (isMounted) {
+          setError('Failed to fetch file.');
+        }
       }
-      setLoading(false);
+      if (isMounted) {
+        setLoading(false);
+      }
     }
-    if (id && user?.token) fetchFile();
+    
+    if (id && user?.token) {
+      fetchFile();
+    }
+    
+    return () => {
+      isMounted = false;
+    };
   }, [id, user]);
+
+
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50">Loading...</div>;
 
@@ -58,7 +84,10 @@ export default function FilePage() {
     </div>
   );
 
-  if (!file) return null;
+  if (!file) {
+    console.log('No file data, returning null');
+    return <div className="min-h-screen flex items-center justify-center bg-gray-50">No file data</div>;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -68,7 +97,6 @@ export default function FilePage() {
           <div><span className="font-semibold">Uploaded:</span> {formatDateTime(file.created_at)}</div>
           <div><span className="font-semibold">Size:</span> {formatFileSize(file.size)}</div>
           <div><span className="font-semibold">Type:</span> {file.type}</div>
-          <div><span className="font-semibold">Visibility:</span> {file.visibility}</div>
         </div>
         <button
           onClick={async () => {

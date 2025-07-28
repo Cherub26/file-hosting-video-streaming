@@ -13,7 +13,7 @@ interface FileItem {
   size: string;
   status: string;
   azure_url: string;
-  visibility: string;
+  tenant?: { name: string };
 }
 
 export default function MyFilesPage() {
@@ -51,17 +51,17 @@ export default function MyFilesPage() {
   return (
     <div className="min-h-screen bg-gray-50 px-8 pt-8">
       <div className="w-full bg-white rounded-xl shadow-lg p-8">
-        <h2 className="text-3xl font-bold text-blue-600 mb-6">My Files</h2>
+        <h2 className="text-3xl font-bold text-blue-600 mb-6">Tenant Files</h2>
         {error && <div className="bg-red-100 text-red-700 border border-red-300 rounded px-4 py-2 mb-4 text-center text-sm">{error}</div>}
         {files.length === 0 ? (
-          <div className="text-gray-500">No files uploaded yet.</div>
+          <div className="text-gray-500">No files uploaded in your tenant yet.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse rounded-lg overflow-hidden shadow text-left text-base">
               <thead>
                 <tr className="bg-gray-100">
                   <th className="py-3 px-6 text-blue-600 font-semibold min-w-[220px]">Name</th>
-                  <th className="py-3 px-6 text-blue-600 font-semibold min-w-[120px]">Visibility</th>
+                  <th className="py-3 px-6 text-blue-600 font-semibold min-w-[120px]">Tenant</th>
                   <th className="py-3 px-6 text-blue-600 font-semibold min-w-[180px]">Uploaded</th>
                   <th className="py-3 px-6 text-blue-600 font-semibold min-w-[120px] whitespace-nowrap">Size</th>
                   <th className="py-3 px-6 text-blue-600 font-semibold min-w-[160px] whitespace-nowrap">Type</th>
@@ -79,7 +79,7 @@ export default function MyFilesPage() {
                         {file.original_name}
                       </Link>
                     </td>
-                    <td className="py-2 px-6 min-w-[120px] capitalize">{file.visibility}</td>
+                    <td className="py-2 px-6 min-w-[120px]">{file.tenant?.name || 'Unknown'}</td>
                     <td className="py-2 px-6 min-w-[180px]">{formatDateTime((file as any).created_at)}</td>
                     <td className="py-2 px-6 min-w-[120px] whitespace-nowrap">{formatFileSize(file.size)}</td>
                     <td className="py-2 px-6 min-w-[160px] whitespace-nowrap">{file.type}</td>

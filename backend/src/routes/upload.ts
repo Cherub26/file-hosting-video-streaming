@@ -2,7 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import { authenticateJWT } from '../middlewares/auth';
-import { handleUpload, getVideoMetadata, getMyFiles, getMyVideos, downloadFile, getFileByPublicId, getVideoByPublicId } from '../controllers/uploadController';
+import { handleUpload, getVideoMetadata, getMyFiles, getMyVideos, downloadFile, getFileByPublicId, getVideoByPublicId, getTenants, switchTenant } from '../controllers/uploadController';
 import { fileSizeLimit } from '../middlewares/fileSizeLimit';
 
 const router = express.Router();
@@ -33,5 +33,11 @@ router.get('/file/:id', authenticateJWT, getFileByPublicId);
 
 // Get video details by public_id
 router.get('/video/:id', authenticateJWT, getVideoByPublicId);
+
+// Get all tenants
+router.get('/tenants', authenticateJWT, getTenants);
+
+// Switch tenant
+router.post('/switch-tenant', authenticateJWT, switchTenant);
 
 export default router; 

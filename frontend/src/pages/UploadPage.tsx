@@ -4,7 +4,6 @@ import { useAuth } from '../providers/AuthProvider';
 export default function UploadPage() {
   const { user } = useAuth();
   const [file, setFile] = useState<File | null>(null);
-  const [visibility, setVisibility] = useState<'public' | 'private'>('public');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -18,7 +17,6 @@ export default function UploadPage() {
     try {
       const formData = new FormData();
       formData.append('video', file);
-      formData.append('visibility', visibility);
       const res = await fetch('/api/upload', {
         method: 'POST',
         headers: { Authorization: `Bearer ${user?.token}` },
@@ -41,10 +39,6 @@ export default function UploadPage() {
         {error && <div className="bg-red-100 text-red-700 border border-red-300 rounded px-4 py-2 mb-4 text-center text-sm">{error}</div>}
         {success && <div className="bg-green-100 text-green-700 border border-green-300 rounded px-4 py-2 mb-4 text-center text-sm">{success}</div>}
         <input type="file" accept="video/*,image/*" onChange={e => setFile(e.target.files?.[0] || null)} required className="w-full mb-4 px-4 py-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 bg-gray-50" />
-        <select value={visibility} onChange={e => setVisibility(e.target.value as 'public' | 'private')} className="w-full mb-4 px-4 py-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 bg-gray-50">
-          <option value="public">Public</option>
-          <option value="private">Private</option>
-        </select>
         <button type="submit" className="w-full bg-blue-600 text-white font-semibold text-lg py-3 rounded hover:bg-blue-700 transition" disabled={uploading}>{uploading ? 'Uploading...' : 'Upload'}</button>
       </form>
     </div>

@@ -14,33 +14,41 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Tenant {
+  id          Int      @id @default(autoincrement())
+  name        String
+  created_at  DateTime @default(now())
+  users       User[]
+  files       File[]
+  videos      Video[]
+}
+
 model User {
   id           Int      @id @default(autoincrement())
   username     String   @unique
   email        String   @unique
   password_hash String
   role         String   @default("User")
+  tenant_id    Int
   created_at   DateTime @default(now())
-  files        File[]   @relation("UserFiles")
+  tenant       Tenant   @relation(fields: [tenant_id], references: [id])
   blobs        Blob[]   @relation("UserBlobs")
   accessLogs   AccessLog[]
   fileAccess   FileAccess[]
-  videos       Video[]  @relation("UserVideos")
 }
 
 model File {
   id           Int      @id @default(autoincrement())
   public_id    String   @unique @default(uuid())
-  owner_id     Int
+  tenant_id    Int
   original_name String
   blob_name    String @unique
   type         String
   size         BigInt?
   status       String   @default("ready")
   azure_url    String?
-  visibility   String   @default("public")
   created_at   DateTime @default(now())
-  owner        User     @relation(fields: [owner_id], references: [id], name: "UserFiles")
+  tenant       Tenant   @relation(fields: [tenant_id], references: [id])
   fileAccess   FileAccess[]
 }
 
@@ -55,7 +63,7 @@ model FileAccess {
 model Video {
   id         Int      @id @default(autoincrement())
   public_id  String   @unique @default(uuid())
-  owner_id   Int
+  tenant_id  Int
   title      String
   type       String
   azure_url  String?
@@ -63,7 +71,7 @@ model Video {
   size       BigInt?
   status     String   @default("ready")
   created_at DateTime @default(now())
-  owner      User     @relation("UserVideos", fields: [owner_id], references: [id])
+  tenant     Tenant   @relation(fields: [tenant_id], references: [id])
   accessLogs AccessLog[]
   metadata   Metadata[]
 }

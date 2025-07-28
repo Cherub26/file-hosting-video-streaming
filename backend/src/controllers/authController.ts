@@ -10,7 +10,7 @@ export async function register(req: Request, res: Response) {
     const user = await registerUser(username, email, password);
     res.json({
       message: 'Registration successful',
-      user: { id: user.id, username: user.username, email: user.email, role: user.role }
+      user: { id: user.id, username: user.username, email: user.email, role: user.role, tenant_id: user.tenant_id }
     });
   } catch (err: any) {
     if (err.code === '23505') { // unique_violation
@@ -31,7 +31,7 @@ export async function login(req: Request, res: Response) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
     const token = generateJWT(user);
-    res.json({ token, user: { id: user.id, username: user.username, email: user.email, role: user.role } });
+    res.json({ token, user: { id: user.id, username: user.username, email: user.email, role: user.role, tenant_id: user.tenant_id } });
   } catch (err) {
     res.status(500).json({ error: 'Login failed' });
   }
