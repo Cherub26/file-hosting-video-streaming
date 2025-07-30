@@ -4,7 +4,8 @@ import { BlobServiceClient } from '@azure/storage-blob';
 import ffmpeg from 'fluent-ffmpeg';
 import fs from 'fs';
 import { Request, Response } from 'express';
-import { compressVideo, generateThumbnail, extractVideoMetadata } from '../services/videoService';
+import { compressVideo, generateCompressedThumbnail, extractVideoMetadata } from '../services/videoService';
+import { compressImage, generateImageThumbnail, extractImageMetadata, isImageFile } from '../services/imageService';
 import { Readable } from 'stream';
 
 const prisma = new PrismaClient();
@@ -65,9 +66,9 @@ export async function handleUpload(req: Request, res: Response) {
       const compressedPath = file.path + '-compressed.mp4';
       await compressVideo(file.path, compressedPath);
 
-      // 2. Generate thumbnail (first frame)
+      // 2. Generate compressed thumbnail (first frame)
       const thumbnailPath = file.path + '-thumb.jpg';
-      await generateThumbnail(compressedPath, thumbnailPath);
+      await generateCompressedThumbnail(compressedPath, thumbnailPath);
 
       // 2.5. Extract and store video metadata
       const videoMetadata = await extractVideoMetadata(compressedPath);
@@ -126,8 +127,74 @@ export async function handleUpload(req: Request, res: Response) {
         thumbUrl,
       });
       return;
+    } else if (await isImageFile(file.mimetype)) {
+      // Handle image files with compression and thumbnail generation
+      // 1. Compress image with Sharp
+      const compressedPath = file.path + '-compressed.jpg';
+      await compressImage(file.path, compressedPath, 80);
+
+      // 2. Generate thumbnail
+      const thumbnailPath = file.path + '-thumb.jpg';
+      await generateImageThumbnail(compressedPath, thumbnailPath, 320);
+
+      // 3. Extract and store image metadata
+      const imageMetadata = await extractImageMetadata(compressedPath);
+
+      // 4. Upload compressed image to Azure
+      azureBlobName = uniquePrefix + file.originalname.replace(/\.[^/.]+$/, '.jpg');
+      const imageBlockBlobClient = containerClient.getBlockBlobClient(azureBlobName);
+      await imageBlockBlobClient.uploadFile(compressedPath);
+      azureUrl = imageBlockBlobClient.url;
+
+      // 5. Upload thumbnail to Azure
+      thumbBlobName = uniquePrefix + file.originalname.replace(/\.[^/.]+$/, '-thumb.jpg');
+      const thumbBlockBlobClient = containerClient.getBlockBlobClient(thumbBlobName);
+      await thumbBlockBlobClient.uploadFile(thumbnailPath);
+      thumbUrl = thumbBlockBlobClient.url;
+
+      // 6. Get compressed file size
+      const compressedStats = fs.statSync(compressedPath);
+
+      // 7. Insert into files table
+      const fileRecord = await prisma.file.create({
+        data: {
+          tenant_id: user.tenant_id,
+          original_name: file.originalname,
+          blob_name: azureBlobName,
+          type: file.mimetype,
+          size: BigInt(compressedStats.size),
+          status: 'ready',
+          azure_url: azureUrl,
+        },
+      });
+
+      // 8. Store metadata for the image
+      const metaEntries = Object.entries(imageMetadata).map(([key, value]) => ({
+        file_id: fileRecord.id,
+        key,
+        value: value?.toString() || null,
+      }));
+      if (metaEntries.length > 0) {
+        await prisma.metadata.createMany({ data: metaEntries });
+      }
+
+      // 9. Clean up local temp files
+      fs.unlinkSync(file.path);
+      fs.unlinkSync(compressedPath);
+      fs.unlinkSync(thumbnailPath);
+
+      // Update blobs table (status: ready)
+      await prisma.blob.update({ where: { id: blobRecord.id }, data: { status: 'ready' } });
+
+      res.json({
+        file: convertBigIntToString(fileRecord),
+        thumbnail: thumbBlobName,
+        azureUrl,
+        thumbUrl,
+      });
+      return;
     } else {
-      // Non-video file: upload directly to Azure with original filename
+      // Non-video/image file: upload directly to Azure with original filename
       const fileBlockBlobClient = containerClient.getBlockBlobClient(azureBlobName);
       await fileBlockBlobClient.uploadFile(file.path);
       azureUrl = fileBlockBlobClient.url;

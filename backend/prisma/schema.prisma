@@ -50,6 +50,7 @@ model File {
   created_at   DateTime @default(now())
   tenant       Tenant   @relation(fields: [tenant_id], references: [id])
   fileAccess   FileAccess[]
+  metadata     Metadata[]
 }
 
 model FileAccess {
@@ -97,9 +98,11 @@ model AccessLog {
 
 model Metadata {
   id         Int      @id @default(autoincrement())
-  video_id   Int
+  video_id   Int?
+  file_id    Int?
   key        String
   value      String?
   created_at DateTime @default(now())
-  video      Video    @relation(fields: [video_id], references: [id])
+  video      Video?   @relation(fields: [video_id], references: [id])
+  file       File?    @relation(fields: [file_id], references: [id])
 }

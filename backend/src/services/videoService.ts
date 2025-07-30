@@ -1,5 +1,6 @@
 import ffmpeg from 'fluent-ffmpeg';
 import path from 'path';
+import { compressImage } from './imageService';
 
 export async function compressVideo(inputPath: string, outputPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -23,6 +24,21 @@ export async function generateThumbnail(videoPath: string, thumbnailPath: string
       .on('end', () => resolve())
       .on('error', (err) => reject(err));
   });
+}
+
+export async function generateCompressedThumbnail(videoPath: string, thumbnailPath: string): Promise<void> {
+  // First generate the thumbnail using FFmpeg
+  const tempThumbnailPath = thumbnailPath + '-temp.jpg';
+  await generateThumbnail(videoPath, tempThumbnailPath);
+  
+  // Then compress it using Sharp for better quality and smaller size
+  await compressImage(tempThumbnailPath, thumbnailPath, 85);
+  
+  // Clean up temp file
+  const fs = require('fs');
+  if (fs.existsSync(tempThumbnailPath)) {
+    fs.unlinkSync(tempThumbnailPath);
+  }
 }
 
 export async function extractVideoMetadata(filePath: string): Promise<{ [key: string]: any }> {
