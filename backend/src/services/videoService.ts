@@ -1,6 +1,6 @@
 import ffmpeg from 'fluent-ffmpeg';
 import path from 'path';
-import { compressImage } from './imageService';
+import { compressImage, generateImageThumbnail } from './imageService';
 
 export async function compressVideo(inputPath: string, outputPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -20,7 +20,12 @@ export async function compressVideo(inputPath: string, outputPath: string): Prom
 export async function generateThumbnail(videoPath: string, thumbnailPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
     ffmpeg(videoPath)
-      .screenshots({ count: 1, folder: path.dirname(thumbnailPath), filename: path.basename(thumbnailPath), size: '320x?' })
+      .screenshots({ 
+        count: 1, 
+        folder: path.dirname(thumbnailPath), 
+        filename: path.basename(thumbnailPath), 
+        size: '1280x?' // Preserve aspect ratio by using '?' for height
+      })
       .on('end', () => resolve())
       .on('error', (err) => reject(err));
   });
@@ -31,8 +36,9 @@ export async function generateCompressedThumbnail(videoPath: string, thumbnailPa
   const tempThumbnailPath = thumbnailPath + '-temp.jpg';
   await generateThumbnail(videoPath, tempThumbnailPath);
   
-  // Then compress it using Sharp for better quality and smaller size
-  await compressImage(tempThumbnailPath, thumbnailPath, 85);
+  // Then resize and compress it using Sharp for better quality and smaller size
+  // Use a larger max dimension to accommodate both landscape and portrait videos
+  await generateImageThumbnail(tempThumbnailPath, thumbnailPath, 800); // Larger max dimension
   
   // Clean up temp file
   const fs = require('fs');

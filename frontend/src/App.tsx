@@ -8,6 +8,8 @@ import MyVideosPage from './pages/MyVideosPage';
 import TenantsPage from './pages/TenantsPage';
 import HomePage from './pages/HomePage';
 import FilePage from './pages/FilePage';
+import VideoPage from './pages/VideoPage';
+import VideoPlayerPage from './pages/VideoPlayerPage';
 import { useAuth } from './providers/AuthProvider';
 import DashboardNav from './components/DashboardNav';
 
@@ -40,6 +42,8 @@ function App() {
         <Route path="/my-videos" element={user ? <MyVideosPage /> : <Navigate to="/login" />} />
         <Route path="/tenants" element={user ? <TenantsPage /> : <Navigate to="/login" />} />
         <Route path="/file/:id" element={user ? <FilePage /> : <Navigate to="/login" />} />
+        <Route path="/video/:id" element={user ? <VideoPage /> : <Navigate to="/login" />} />
+        <Route path="/video/:id/play" element={user ? <VideoPlayerPage /> : <Navigate to="/login" />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </div>

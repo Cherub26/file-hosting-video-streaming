@@ -128,34 +128,24 @@ export async function handleUpload(req: Request, res: Response) {
       });
       return;
     } else if (await isImageFile(file.mimetype)) {
-      // Handle image files with compression and thumbnail generation
+      // Handle image files with compression only (no thumbnails)
       // 1. Compress image with Sharp
       const compressedPath = file.path + '-compressed.jpg';
       await compressImage(file.path, compressedPath, 80);
 
-      // 2. Generate thumbnail
-      const thumbnailPath = file.path + '-thumb.jpg';
-      await generateImageThumbnail(compressedPath, thumbnailPath, 320);
-
-      // 3. Extract and store image metadata
+      // 2. Extract and store image metadata
       const imageMetadata = await extractImageMetadata(compressedPath);
 
-      // 4. Upload compressed image to Azure
+      // 3. Upload compressed image to Azure
       azureBlobName = uniquePrefix + file.originalname.replace(/\.[^/.]+$/, '.jpg');
       const imageBlockBlobClient = containerClient.getBlockBlobClient(azureBlobName);
       await imageBlockBlobClient.uploadFile(compressedPath);
       azureUrl = imageBlockBlobClient.url;
 
-      // 5. Upload thumbnail to Azure
-      thumbBlobName = uniquePrefix + file.originalname.replace(/\.[^/.]+$/, '-thumb.jpg');
-      const thumbBlockBlobClient = containerClient.getBlockBlobClient(thumbBlobName);
-      await thumbBlockBlobClient.uploadFile(thumbnailPath);
-      thumbUrl = thumbBlockBlobClient.url;
-
-      // 6. Get compressed file size
+      // 4. Get compressed file size
       const compressedStats = fs.statSync(compressedPath);
 
-      // 7. Insert into files table
+      // 5. Insert into files table
       const fileRecord = await prisma.file.create({
         data: {
           tenant_id: user.tenant_id,
@@ -168,7 +158,7 @@ export async function handleUpload(req: Request, res: Response) {
         },
       });
 
-      // 8. Store metadata for the image
+      // 6. Store metadata for the image
       const metaEntries = Object.entries(imageMetadata).map(([key, value]) => ({
         file_id: fileRecord.id,
         key,
@@ -178,19 +168,16 @@ export async function handleUpload(req: Request, res: Response) {
         await prisma.metadata.createMany({ data: metaEntries });
       }
 
-      // 9. Clean up local temp files
+      // 7. Clean up local temp files
       fs.unlinkSync(file.path);
       fs.unlinkSync(compressedPath);
-      fs.unlinkSync(thumbnailPath);
 
       // Update blobs table (status: ready)
       await prisma.blob.update({ where: { id: blobRecord.id }, data: { status: 'ready' } });
 
       res.json({
         file: convertBigIntToString(fileRecord),
-        thumbnail: thumbBlobName,
         azureUrl,
-        thumbUrl,
       });
       return;
     } else {
@@ -408,6 +395,158 @@ export async function getVideoByPublicId(req: Request, res: Response) {
     res.json({ video: convertBigIntToString(video) });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch video', details: (err && typeof err === 'object' && 'message' in err) ? (err as any).message : String(err) });
+  }
+}
+
+export async function downloadVideo(req: Request, res: Response) {
+  try {
+    const user = (req as any).user;
+    const publicId = req.params.id;
+    if (!publicId) return res.status(400).json({ error: 'Missing video id' });
+    
+    // Require authentication
+    if (!user) {
+      return res.status(401).json({ error: 'Authentication required to access videos' });
+    }
+    
+    const video = await prisma.video.findFirst({ 
+      where: { public_id: publicId }
+    });
+    
+    if (!video) return res.status(404).json({ error: 'Video not found' });
+    
+    // Check tenant access
+    if (user.tenant_id !== video.tenant_id) {
+      return res.status(403).json({ 
+        error: 'Forbidden - Access denied to videos outside your tenant'
+      });
+    }
+
+    if (!video.azure_url) {
+      return res.status(404).json({ error: 'Video file not available for download' });
+    }
+
+    // Extract blob name from Azure URL
+    const urlParts = video.azure_url.split('/');
+    const blobName = urlParts[urlParts.length - 1];
+    
+    if (!blobName) {
+      return res.status(500).json({ error: 'Invalid video URL format' });
+    }
+
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+    const downloadResponse = await blockBlobClient.download();
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(video.title)}"`);
+    res.setHeader('Content-Type', video.type || 'video/mp4');
+    if (downloadResponse.readableStreamBody) {
+      downloadResponse.readableStreamBody.pipe(res);
+    } else {
+      res.status(500).json({ error: 'Failed to download video' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to download video', details: (err && typeof err === 'object' && 'message' in err) ? (err as any).message : String(err) });
+  }
+}
+
+export async function serveVideo(req: Request, res: Response) {
+  try {
+    const user = (req as any).user;
+    const publicId = req.params.id;
+    if (!publicId) return res.status(400).json({ error: 'Missing video id' });
+    
+    // Require authentication
+    if (!user) {
+      return res.status(401).json({ error: 'Authentication required to access videos' });
+    }
+    
+    const video = await prisma.video.findFirst({ 
+      where: { public_id: publicId }
+    });
+    
+    if (!video) return res.status(404).json({ error: 'Video not found' });
+    
+    // Check tenant access
+    if (user.tenant_id !== video.tenant_id) {
+      return res.status(403).json({ 
+        error: 'Forbidden - Access denied to videos outside your tenant'
+      });
+    }
+
+    if (!video.azure_url) {
+      return res.status(404).json({ error: 'Video file not available' });
+    }
+
+    // Extract blob name from Azure URL
+    const urlParts = video.azure_url.split('/');
+    const blobName = urlParts[urlParts.length - 1];
+    
+    if (!blobName) {
+      return res.status(500).json({ error: 'Invalid video URL format' });
+    }
+
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+    const downloadResponse = await blockBlobClient.download();
+    res.setHeader('Content-Type', video.type || 'video/mp4');
+    res.setHeader('Accept-Ranges', 'bytes');
+    
+    if (downloadResponse.readableStreamBody) {
+      downloadResponse.readableStreamBody.pipe(res);
+    } else {
+      res.status(500).json({ error: 'Failed to serve video' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to serve video', details: (err && typeof err === 'object' && 'message' in err) ? (err as any).message : String(err) });
+  }
+}
+
+export async function serveVideoThumbnail(req: Request, res: Response) {
+  try {
+    const user = (req as any).user;
+    const publicId = req.params.id;
+    if (!publicId) return res.status(400).json({ error: 'Missing video id' });
+    
+    // Require authentication
+    if (!user) {
+      return res.status(401).json({ error: 'Authentication required to access video thumbnails' });
+    }
+    
+    const video = await prisma.video.findFirst({ 
+      where: { public_id: publicId }
+    });
+    
+    if (!video) return res.status(404).json({ error: 'Video not found' });
+    
+    // Check tenant access
+    if (user.tenant_id !== video.tenant_id) {
+      return res.status(403).json({ 
+        error: 'Forbidden - Access denied to videos outside your tenant'
+      });
+    }
+
+    if (!video.thumb_url) {
+      return res.status(404).json({ error: 'Video thumbnail not available' });
+    }
+
+    // Extract blob name from Azure URL
+    const urlParts = video.thumb_url.split('/');
+    const blobName = urlParts[urlParts.length - 1];
+    
+    if (!blobName) {
+      return res.status(500).json({ error: 'Invalid thumbnail URL format' });
+    }
+
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+    const downloadResponse = await blockBlobClient.download();
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+    
+    if (downloadResponse.readableStreamBody) {
+      downloadResponse.readableStreamBody.pipe(res);
+    } else {
+      res.status(500).json({ error: 'Failed to serve thumbnail' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to serve thumbnail', details: (err && typeof err === 'object' && 'message' in err) ? (err as any).message : String(err) });
   }
 }
 

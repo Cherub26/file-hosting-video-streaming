@@ -47,6 +47,7 @@ model File {
   size         BigInt?
   status       String   @default("ready")
   azure_url    String?
+  thumb_url    String?
   created_at   DateTime @default(now())
   tenant       Tenant   @relation(fields: [tenant_id], references: [id])
   fileAccess   FileAccess[]

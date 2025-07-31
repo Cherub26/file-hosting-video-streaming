@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../providers/AuthProvider';
-import { FiDownload } from 'react-icons/fi';
+import { FiDownload, FiPlay } from 'react-icons/fi';
 import { formatDateTime, formatFileSize } from '../utils/format';
 
 interface VideoItem {
@@ -65,50 +66,62 @@ export default function MyVideosPage() {
                   <th className="py-3 px-6 text-blue-600 font-semibold min-w-[120px]">Format</th>
                   <th className="py-3 px-6 text-blue-600 font-semibold min-w-[180px]">Uploaded</th>
                   <th className="py-3 px-6 text-blue-600 font-semibold min-w-[120px] whitespace-nowrap">Size</th>
-                  <th className="py-3 px-6 text-blue-600 font-semibold min-w-[120px] whitespace-nowrap">Download</th>
+                  <th className="py-3 px-6 text-blue-600 font-semibold min-w-[120px] whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {videos.map(video => (
                   <tr key={video.public_id} className="even:bg-gray-50">
-                    <td className="py-2 px-6 min-w-[220px]">{video.title}</td>
+                    <td className="py-2 px-6 min-w-[220px]">
+                      <Link 
+                        to={`/video/${video.public_id}`}
+                        className="text-blue-600 hover:text-blue-800 font-medium hover:underline"
+                      >
+                        {video.title}
+                      </Link>
+                    </td>
                     <td className="py-2 px-6 min-w-[120px]">{video.tenant?.name || 'Unknown'}</td>
                     <td className="py-2 px-6 min-w-[120px] whitespace-nowrap">{video.type?.split('/')[1] || '-'}</td>
                     <td className="py-2 px-6 min-w-[180px]">{formatDateTime((video as any).created_at)}</td>
                     <td className="py-2 px-6 min-w-[120px] whitespace-nowrap">{video.size ? formatFileSize(video.size) : '-'}</td>
                     <td className="py-2 px-6 min-w-[120px] whitespace-nowrap">
-                     <button
-                       onClick={async () => {
-                         try {
-                           if (!video.azure_url) {
-                             alert('No video URL available.');
-                             return;
-                           }
-                           const res = await fetch(video.azure_url, {
-                             headers: { Authorization: `Bearer ${user?.token}` },
-                           });
-                           if (!res.ok) {
-                             alert('Failed to download video.');
-                             return;
-                           }
-                           const blob = await res.blob();
-                           const url = window.URL.createObjectURL(blob);
-                           const a = document.createElement('a');
-                           a.href = url;
-                           a.download = video.title;
-                           document.body.appendChild(a);
-                           a.click();
-                           a.remove();
-                           window.URL.revokeObjectURL(url);
-                         } catch {
-                           alert('Failed to download video.');
-                         }
-                       }}
-                       className="text-blue-600 hover:text-black p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-300"
-                       title="Download video"
-                     >
-                       <FiDownload size={20} />
-                     </button>
+                      <div className="flex gap-2">
+                        <Link
+                          to={`/video/${video.public_id}`}
+                          className="text-green-600 hover:text-green-800 p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-green-300"
+                          title="Play video"
+                        >
+                          <FiPlay size={20} />
+                        </Link>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const res = await fetch(`/api/download-video/${video.public_id}`, {
+                                headers: { Authorization: `Bearer ${user?.token}` },
+                              });
+                              if (!res.ok) {
+                                alert('Failed to download video.');
+                                return;
+                              }
+                              const blob = await res.blob();
+                              const url = window.URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = video.title;
+                              document.body.appendChild(a);
+                              a.click();
+                              a.remove();
+                              window.URL.revokeObjectURL(url);
+                            } catch {
+                              alert('Failed to download video.');
+                            }
+                          }}
+                          className="text-blue-600 hover:text-blue-800 p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-300"
+                          title="Download video"
+                        >
+                          <FiDownload size={20} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

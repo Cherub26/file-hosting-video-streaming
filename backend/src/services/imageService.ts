@@ -11,11 +11,18 @@ export async function compressImage(inputPath: string, outputPath: string, quali
   }
 }
 
-export async function generateImageThumbnail(inputPath: string, thumbnailPath: string, width: number = 320): Promise<void> {
+export async function generateImageThumbnail(inputPath: string, thumbnailPath: string, width: number = 640): Promise<void> {
   try {
     await sharp(inputPath)
-      .resize(width, null, { withoutEnlargement: true })
-      .jpeg({ quality: 85 })
+      .resize(width, null, { 
+        withoutEnlargement: true,
+        kernel: sharp.kernel.lanczos3 // Better quality resizing
+      })
+      .jpeg({ 
+        quality: 90, // Higher quality
+        progressive: true, // Progressive JPEG for better loading
+        mozjpeg: true // Use mozjpeg for better compression
+      })
       .toFile(thumbnailPath);
   } catch (error) {
     throw new Error(`Failed to generate image thumbnail: ${error}`);
