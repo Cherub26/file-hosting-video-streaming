@@ -26,4 +26,32 @@ export function requireRole(role: UserRole) {
     }
     next();
   };
+}
+
+// Middleware: optional JWT authentication (sets user if token is valid, but doesn't require it)
+export function optionalAuthJWT(req: Request, res: Response, next: NextFunction) {
+  const authHeader = req.headers['authorization'];
+  if (!authHeader) {
+    // No auth header, continue without user
+    (req as any).user = undefined;
+    return next();
+  }
+  
+  const token = authHeader.split(' ')[1];
+  if (!token) {
+    // Malformed token, continue without user
+    (req as any).user = undefined;
+    return next();
+  }
+  
+  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    if (err) {
+      // Invalid token, continue without user
+      (req as any).user = undefined;
+      return next();
+    }
+    // Valid token, set user and continue
+    (req as any).user = decoded;
+    next();
+  });
 } 

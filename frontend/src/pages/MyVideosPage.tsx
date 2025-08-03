@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../providers/AuthProvider';
-import { FiDownload, FiPlay } from 'react-icons/fi';
+import { FiDownload, FiPlay, FiEye, FiEyeOff } from 'react-icons/fi';
 import { formatDateTime, formatFileSize } from '../utils/format';
 
 interface VideoItem {
@@ -13,6 +13,7 @@ interface VideoItem {
   thumb_url?: string;
   size?: string;
   status: string;
+  visibility: string;
   created_at: string;
   tenant?: { name: string };
 }
@@ -21,6 +22,7 @@ export default function MyVideosPage() {
   const { user } = useAuth();
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [error, setError] = useState('');
+  const [changingVisibility, setChangingVisibility] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchVideos() {
@@ -49,6 +51,37 @@ export default function MyVideosPage() {
     fetchVideos();
   }, [user]);
 
+  const changeVideoVisibility = async (videoId: string, newVisibility: 'public' | 'private') => {
+    setChangingVisibility(videoId);
+    try {
+      const res = await fetch(`/api/video/${videoId}/visibility`, {
+        method: 'PUT',
+        headers: { 
+          Authorization: `Bearer ${user?.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ visibility: newVisibility }),
+      });
+      
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || 'Failed to change visibility');
+        return;
+      }
+      
+      // Update the video in the state
+      setVideos(videos.map(video => 
+        video.public_id === videoId 
+          ? { ...video, visibility: newVisibility }
+          : video
+      ));
+    } catch (err) {
+      alert('Failed to change visibility');
+    } finally {
+      setChangingVisibility(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 px-8 pt-8">
       <div className="w-full bg-white rounded-xl shadow-lg p-8">
@@ -63,10 +96,11 @@ export default function MyVideosPage() {
                 <tr className="bg-gray-100">
                   <th className="py-3 px-6 text-blue-600 font-semibold min-w-[220px]">Title</th>
                   <th className="py-3 px-6 text-blue-600 font-semibold min-w-[120px]">Tenant</th>
+                  <th className="py-3 px-6 text-blue-600 font-semibold min-w-[100px]">Visibility</th>
                   <th className="py-3 px-6 text-blue-600 font-semibold min-w-[120px]">Format</th>
                   <th className="py-3 px-6 text-blue-600 font-semibold min-w-[180px]">Uploaded</th>
                   <th className="py-3 px-6 text-blue-600 font-semibold min-w-[120px] whitespace-nowrap">Size</th>
-                  <th className="py-3 px-6 text-blue-600 font-semibold min-w-[120px] whitespace-nowrap">Actions</th>
+                  <th className="py-3 px-6 text-blue-600 font-semibold min-w-[160px] whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -81,11 +115,34 @@ export default function MyVideosPage() {
                       </Link>
                     </td>
                     <td className="py-2 px-6 min-w-[120px]">{video.tenant?.name || 'Unknown'}</td>
+                    <td className="py-2 px-6 min-w-[100px]">
+                      <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                        video.visibility === 'public' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-orange-100 text-orange-800'
+                      }`}>
+                        {video.visibility === 'public' ? 'Public' : 'Private'}
+                      </span>
+                    </td>
                     <td className="py-2 px-6 min-w-[120px] whitespace-nowrap">{video.type?.split('/')[1] || '-'}</td>
                     <td className="py-2 px-6 min-w-[180px]">{formatDateTime((video as any).created_at)}</td>
                     <td className="py-2 px-6 min-w-[120px] whitespace-nowrap">{video.size ? formatFileSize(video.size) : '-'}</td>
-                    <td className="py-2 px-6 min-w-[120px] whitespace-nowrap">
+                    <td className="py-2 px-6 min-w-[160px] whitespace-nowrap">
                       <div className="flex gap-2">
+                        <button
+                          onClick={() => changeVideoVisibility(video.public_id, video.visibility === 'public' ? 'private' : 'public')}
+                          disabled={changingVisibility === video.public_id}
+                          className="text-gray-600 hover:text-blue-600 p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:opacity-50"
+                          title={`Make ${video.visibility === 'public' ? 'private' : 'public'}`}
+                        >
+                          {changingVisibility === video.public_id ? (
+                            <div className="w-5 h-5 animate-spin border-2 border-blue-600 border-t-transparent rounded-full"></div>
+                          ) : video.visibility === 'public' ? (
+                            <FiEye size={20} />
+                          ) : (
+                            <FiEyeOff size={20} />
+                          )}
+                        </button>
                         <Link
                           to={`/video/${video.public_id}`}
                           className="text-green-600 hover:text-green-800 p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-green-300"

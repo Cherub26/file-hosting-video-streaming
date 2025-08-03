@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../providers/AuthProvider';
-import { FiArrowLeft, FiDownload } from 'react-icons/fi';
+import { FiArrowLeft, FiDownload, FiEye, FiEyeOff } from 'react-icons/fi';
 import { formatDateTime, formatFileSize } from '../utils/format';
 import AuthenticatedImage from '../components/AuthenticatedImage';
 import AuthenticatedVideo from '../components/AuthenticatedVideo';
@@ -13,6 +13,7 @@ interface VideoItem {
   type: string;
   size?: string;
   status: string;
+  visibility: string;
   azure_url?: string;
   thumb_url?: string;
   created_at: string;
@@ -33,9 +34,13 @@ export default function VideoPlayerPage() {
       setError('');
       setLoading(true);
       try {
-        const res = await fetch(`/api/video/${id}`, {
-          headers: { Authorization: `Bearer ${user?.token}` },
-        });
+        // Try to fetch video, with authorization header if user is logged in
+        const headers: any = {};
+        if (user?.token) {
+          headers.Authorization = `Bearer ${user.token}`;
+        }
+        
+        const res = await fetch(`/api/video/${id}`, { headers });
         
         let data = null;
         try {
@@ -66,7 +71,7 @@ export default function VideoPlayerPage() {
       }
     }
     
-    if (id && user?.token) {
+    if (id) {
       fetchVideo();
     }
     
@@ -77,9 +82,12 @@ export default function VideoPlayerPage() {
 
   const handleDownload = async () => {
     try {
-      const res = await fetch(`/api/download-video/${video?.public_id}`, {
-        headers: { Authorization: `Bearer ${user?.token}` },
-      });
+      const headers: any = {};
+      if (user?.token) {
+        headers.Authorization = `Bearer ${user.token}`;
+      }
+      
+      const res = await fetch(`/api/download-video/${video?.public_id}`, { headers });
       if (!res.ok) {
         alert('Failed to download video.');
         return;
@@ -106,7 +114,14 @@ export default function VideoPlayerPage() {
 
   if (error) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white rounded-xl shadow-lg p-8 text-center text-red-600 font-semibold">{error}</div>
+      <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+        <div className="text-red-600 font-semibold mb-4">{error}</div>
+        {!user && (
+          <div className="text-gray-600 text-sm">
+            This video may be private. <Link to="/login" className="text-blue-600 hover:underline">Login</Link> to access it.
+          </div>
+        )}
+      </div>
     </div>
   );
 
@@ -131,9 +146,23 @@ export default function VideoPlayerPage() {
               </button>
             </div>
             <div className="flex items-center gap-4">
-              <h1 className="text-lg font-semibold text-gray-900 truncate max-w-md">
+              <h1 className="text-lg font-semibold text-gray-900 truncate max-w-sm">
                 {video.title}
               </h1>
+              <div className="flex items-center gap-2">
+                {video.visibility === 'public' ? (
+                  <FiEye className="text-green-600" size={18} />
+                ) : (
+                  <FiEyeOff className="text-orange-600" size={18} />
+                )}
+                <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                  video.visibility === 'public' 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-orange-100 text-orange-800'
+                }`}>
+                  {video.visibility === 'public' ? 'Public' : 'Private'}
+                </span>
+              </div>
               <button
                 onClick={handleDownload}
                 className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors"

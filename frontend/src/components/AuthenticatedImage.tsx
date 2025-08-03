@@ -18,18 +18,18 @@ export default function AuthenticatedImage({ src, alt, className, fallback }: Au
     let isMounted = true;
     
     async function fetchImage() {
-      if (!user?.token) {
-        setError(true);
-        setLoading(false);
-        return;
-      }
-
       try {
-        const response = await fetch(src, {
-          headers: {
-            Authorization: `Bearer ${user.token}`,
-          },
-        });
+        // First try without authentication (for public content)
+        let response = await fetch(src);
+        
+        // If unauthorized and user has token, try with authentication
+        if (!response.ok && response.status === 401 && user?.token) {
+          response = await fetch(src, {
+            headers: {
+              Authorization: `Bearer ${user.token}`,
+            },
+          });
+        }
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);

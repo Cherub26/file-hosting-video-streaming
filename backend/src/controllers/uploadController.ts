@@ -42,6 +42,7 @@ export async function handleUpload(req: Request, res: Response) {
   }
   const file = req.file;
   const user = (req as any).user;
+  const visibility = req.body.visibility || 'public'; // Default to public if not specified
   let blobRecord;
   try {
     // Insert into blobs table (status: uploading)
@@ -98,6 +99,7 @@ export async function handleUpload(req: Request, res: Response) {
           thumb_url: thumbUrl,
           size: BigInt(compressedStats.size),
           status: 'ready',
+          visibility: visibility,
           // created_at will default to now
         },
       });
@@ -154,6 +156,7 @@ export async function handleUpload(req: Request, res: Response) {
           type: file.mimetype,
           size: BigInt(compressedStats.size),
           status: 'ready',
+          visibility: visibility,
           azure_url: azureUrl,
         },
       });
@@ -197,6 +200,7 @@ export async function handleUpload(req: Request, res: Response) {
           type: file.mimetype,
           size: BigInt(file.size),
           status: 'ready',
+          visibility: visibility,
           azure_url: azureUrl,
         },
       });
@@ -316,23 +320,25 @@ export async function downloadFile(req: Request, res: Response) {
     const publicId = req.params.id;
     if (!publicId) return res.status(400).json({ error: 'Missing file id' });
     
-    // Require authentication
-    if (!user) {
-      return res.status(401).json({ error: 'Authentication required to access files' });
-    }
-    
     const file = await prisma.file.findFirst({ 
       where: { public_id: publicId }
     });
     
     if (!file) return res.status(404).json({ error: 'File not found' });
     
-    // Check tenant access
-    if (user.tenant_id !== file.tenant_id) {
-      return res.status(403).json({ 
-        error: 'Forbidden - Access denied to files outside your tenant'
-      });
+    // Check access based on visibility
+    if (file.visibility === 'private') {
+      // Private files require authentication and tenant access
+      if (!user) {
+        return res.status(401).json({ error: 'Authentication required to access private files' });
+      }
+      if (user.tenant_id !== file.tenant_id) {
+        return res.status(403).json({ 
+          error: 'Forbidden - Access denied to private files outside your tenant'
+        });
+      }
     }
+    // Public files can be accessed by anyone
     const blockBlobClient = containerClient.getBlockBlobClient(file.blob_name);
     const downloadResponse = await blockBlobClient.download();
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(file.original_name)}"`);
@@ -353,23 +359,25 @@ export async function getFileByPublicId(req: Request, res: Response) {
     const publicId = req.params.id;
     if (!publicId) return res.status(400).json({ error: 'Missing file id' });
     
-    // Require authentication
-    if (!user) {
-      return res.status(401).json({ error: 'Authentication required to access files' });
-    }
-    
     const file = await prisma.file.findFirst({ 
       where: { public_id: publicId }
     });
     
     if (!file) return res.status(404).json({ error: 'File not found' });
     
-    // Check tenant access
-    if (user.tenant_id !== file.tenant_id) {
-      return res.status(403).json({ 
-        error: 'Forbidden - Access denied to files outside your tenant'
-      });
+    // Check access based on visibility
+    if (file.visibility === 'private') {
+      // Private files require authentication and tenant access
+      if (!user) {
+        return res.status(401).json({ error: 'Authentication required to access private files' });
+      }
+      if (user.tenant_id !== file.tenant_id) {
+        return res.status(403).json({ 
+          error: 'Forbidden - Access denied to private files outside your tenant'
+        });
+      }
     }
+    // Public files can be accessed by anyone
     
     res.json({ file: convertBigIntToString(file) });
   } catch (err) {
@@ -387,10 +395,17 @@ export async function getVideoByPublicId(req: Request, res: Response) {
     });
     if (!video) return res.status(404).json({ error: 'Video not found' });
     
-    // Check if user is authenticated and in the same tenant as video
-    if (!user || user.tenant_id !== video.tenant_id) {
-      return res.status(403).json({ error: 'Forbidden - Access denied to videos outside your tenant' });
+    // Check access based on visibility
+    if (video.visibility === 'private') {
+      // Private videos require authentication and tenant access
+      if (!user) {
+        return res.status(401).json({ error: 'Authentication required to access private videos' });
+      }
+      if (user.tenant_id !== video.tenant_id) {
+        return res.status(403).json({ error: 'Forbidden - Access denied to private videos outside your tenant' });
+      }
     }
+    // Public videos can be accessed by anyone
     
     res.json({ video: convertBigIntToString(video) });
   } catch (err) {
@@ -404,23 +419,25 @@ export async function downloadVideo(req: Request, res: Response) {
     const publicId = req.params.id;
     if (!publicId) return res.status(400).json({ error: 'Missing video id' });
     
-    // Require authentication
-    if (!user) {
-      return res.status(401).json({ error: 'Authentication required to access videos' });
-    }
-    
     const video = await prisma.video.findFirst({ 
       where: { public_id: publicId }
     });
     
     if (!video) return res.status(404).json({ error: 'Video not found' });
     
-    // Check tenant access
-    if (user.tenant_id !== video.tenant_id) {
-      return res.status(403).json({ 
-        error: 'Forbidden - Access denied to videos outside your tenant'
-      });
+    // Check access based on visibility
+    if (video.visibility === 'private') {
+      // Private videos require authentication and tenant access
+      if (!user) {
+        return res.status(401).json({ error: 'Authentication required to access private videos' });
+      }
+      if (user.tenant_id !== video.tenant_id) {
+        return res.status(403).json({ 
+          error: 'Forbidden - Access denied to private videos outside your tenant'
+        });
+      }
     }
+    // Public videos can be accessed by anyone
 
     if (!video.azure_url) {
       return res.status(404).json({ error: 'Video file not available for download' });
@@ -454,23 +471,25 @@ export async function serveVideo(req: Request, res: Response) {
     const publicId = req.params.id;
     if (!publicId) return res.status(400).json({ error: 'Missing video id' });
     
-    // Require authentication
-    if (!user) {
-      return res.status(401).json({ error: 'Authentication required to access videos' });
-    }
-    
     const video = await prisma.video.findFirst({ 
       where: { public_id: publicId }
     });
     
     if (!video) return res.status(404).json({ error: 'Video not found' });
     
-    // Check tenant access
-    if (user.tenant_id !== video.tenant_id) {
-      return res.status(403).json({ 
-        error: 'Forbidden - Access denied to videos outside your tenant'
-      });
+    // Check access based on visibility
+    if (video.visibility === 'private') {
+      // Private videos require authentication and tenant access
+      if (!user) {
+        return res.status(401).json({ error: 'Authentication required to access private videos' });
+      }
+      if (user.tenant_id !== video.tenant_id) {
+        return res.status(403).json({ 
+          error: 'Forbidden - Access denied to private videos outside your tenant'
+        });
+      }
     }
+    // Public videos can be accessed by anyone
 
     if (!video.azure_url) {
       return res.status(404).json({ error: 'Video file not available' });
@@ -505,23 +524,25 @@ export async function serveVideoThumbnail(req: Request, res: Response) {
     const publicId = req.params.id;
     if (!publicId) return res.status(400).json({ error: 'Missing video id' });
     
-    // Require authentication
-    if (!user) {
-      return res.status(401).json({ error: 'Authentication required to access video thumbnails' });
-    }
-    
     const video = await prisma.video.findFirst({ 
       where: { public_id: publicId }
     });
     
     if (!video) return res.status(404).json({ error: 'Video not found' });
     
-    // Check tenant access
-    if (user.tenant_id !== video.tenant_id) {
-      return res.status(403).json({ 
-        error: 'Forbidden - Access denied to videos outside your tenant'
-      });
+    // Check access based on visibility
+    if (video.visibility === 'private') {
+      // Private video thumbnails require authentication and tenant access
+      if (!user) {
+        return res.status(401).json({ error: 'Authentication required to access private video thumbnails' });
+      }
+      if (user.tenant_id !== video.tenant_id) {
+        return res.status(403).json({ 
+          error: 'Forbidden - Access denied to private videos outside your tenant'
+        });
+      }
     }
+    // Public video thumbnails can be accessed by anyone
 
     if (!video.thumb_url) {
       return res.status(404).json({ error: 'Video thumbnail not available' });
@@ -632,5 +653,81 @@ export async function switchTenant(req: Request, res: Response) {
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to switch tenant', details: (err && typeof err === 'object' && 'message' in err) ? (err as any).message : String(err) });
+  }
+}
+
+export async function changeFileVisibility(req: Request, res: Response) {
+  const user = (req as any).user;
+  const { id } = req.params; // public_id
+  const { visibility } = req.body;
+
+  if (!visibility || (visibility !== 'public' && visibility !== 'private')) {
+    return res.status(400).json({ error: 'Valid visibility value (public or private) is required' });
+  }
+
+  try {
+    // Find the file and check if user has access (same tenant)
+    const file = await prisma.file.findFirst({
+      where: {
+        public_id: id,
+        tenant_id: user.tenant_id,
+      },
+    });
+
+    if (!file) {
+      return res.status(404).json({ error: 'File not found or access denied' });
+    }
+
+    // Update the visibility
+    const updatedFile = await prisma.file.update({
+      where: { id: file.id },
+      data: { visibility },
+    });
+
+    res.json({ 
+      message: 'File visibility updated successfully',
+      file: convertBigIntToString(updatedFile)
+    });
+  } catch (err) {
+    const errorMsg = (err && typeof err === 'object' && 'message' in err) ? (err as any).message : String(err);
+    res.status(500).json({ error: 'Failed to update file visibility', details: errorMsg });
+  }
+}
+
+export async function changeVideoVisibility(req: Request, res: Response) {
+  const user = (req as any).user;
+  const { id } = req.params; // public_id
+  const { visibility } = req.body;
+
+  if (!visibility || (visibility !== 'public' && visibility !== 'private')) {
+    return res.status(400).json({ error: 'Valid visibility value (public or private) is required' });
+  }
+
+  try {
+    // Find the video and check if user has access (same tenant)
+    const video = await prisma.video.findFirst({
+      where: {
+        public_id: id,
+        tenant_id: user.tenant_id,
+      },
+    });
+
+    if (!video) {
+      return res.status(404).json({ error: 'Video not found or access denied' });
+    }
+
+    // Update the visibility
+    const updatedVideo = await prisma.video.update({
+      where: { id: video.id },
+      data: { visibility },
+    });
+
+    res.json({ 
+      message: 'Video visibility updated successfully',
+      video: convertBigIntToString(updatedVideo)
+    });
+  } catch (err) {
+    const errorMsg = (err && typeof err === 'object' && 'message' in err) ? (err as any).message : String(err);
+    res.status(500).json({ error: 'Failed to update video visibility', details: errorMsg });
   }
 } 

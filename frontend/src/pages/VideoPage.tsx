@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../providers/AuthProvider';
-import { FiDownload, FiPlay } from 'react-icons/fi';
+import { FiDownload, FiPlay, FiEye, FiEyeOff } from 'react-icons/fi';
 import { formatDateTime, formatFileSize } from '../utils/format';
 import AuthenticatedImage from '../components/AuthenticatedImage';
 
@@ -12,6 +12,7 @@ interface VideoItem {
   type: string;
   size?: string;
   status: string;
+  visibility: string;
   azure_url?: string;
   thumb_url?: string;
   created_at: string;
@@ -32,9 +33,13 @@ export default function VideoPage() {
       setError('');
       setLoading(true);
       try {
-        const res = await fetch(`/api/video/${id}`, {
-          headers: { Authorization: `Bearer ${user?.token}` },
-        });
+        // Try to fetch video, with authorization header if user is logged in
+        const headers: any = {};
+        if (user?.token) {
+          headers.Authorization = `Bearer ${user.token}`;
+        }
+        
+        const res = await fetch(`/api/video/${id}`, { headers });
         
         let data = null;
         try {
@@ -65,7 +70,7 @@ export default function VideoPage() {
       }
     }
     
-    if (id && user?.token) {
+    if (id) {
       fetchVideo();
     }
     
@@ -76,9 +81,12 @@ export default function VideoPage() {
 
   const handleDownload = async () => {
     try {
-      const res = await fetch(`/api/download-video/${video?.public_id}`, {
-        headers: { Authorization: `Bearer ${user?.token}` },
-      });
+      const headers: any = {};
+      if (user?.token) {
+        headers.Authorization = `Bearer ${user.token}`;
+      }
+      
+      const res = await fetch(`/api/download-video/${video?.public_id}`, { headers });
       if (!res.ok) {
         alert('Failed to download video.');
         return;
@@ -105,7 +113,14 @@ export default function VideoPage() {
 
   if (error) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white rounded-xl shadow-lg p-8 text-center text-red-600 font-semibold">{error}</div>
+      <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+        <div className="text-red-600 font-semibold mb-4">{error}</div>
+        {!user && (
+          <div className="text-gray-600 text-sm">
+            This video may be private. <Link to="/login" className="text-blue-600 hover:underline">Login</Link> to access it.
+          </div>
+        )}
+      </div>
     </div>
   );
 
@@ -117,7 +132,7 @@ export default function VideoPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <div className="w-full max-w-2xl bg-white rounded-xl shadow-lg p-8">
-        <h2 className="text-2xl font-bold text-blue-600 mb-4">{video.title}</h2>
+        <h2 className="text-2xl font-bold text-blue-600 mb-4 break-words">{video.title}</h2>
         
         {/* Video Thumbnail */}
         <div className="mb-6">
@@ -140,11 +155,31 @@ export default function VideoPage() {
         </div>
 
         {/* Video Metadata */}
-        <div className="mb-6 text-gray-700">
+        <div className="mb-6 text-gray-700 space-y-2">
           <div><span className="font-semibold">Uploaded:</span> {formatDateTime(video.created_at)}</div>
           {video.size && <div><span className="font-semibold">Size:</span> {formatFileSize(video.size)}</div>}
           <div><span className="font-semibold">Type:</span> {video.type}</div>
           <div><span className="font-semibold">Status:</span> {video.status}</div>
+          <div className="flex items-center gap-2">
+            <span className="font-semibold">Visibility:</span>
+            <div className="flex items-center gap-2">
+              {video.visibility === 'public' ? (
+                <FiEye className="text-green-600" size={16} />
+              ) : (
+                <FiEyeOff className="text-orange-600" size={16} />
+              )}
+              <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                video.visibility === 'public' 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-orange-100 text-orange-800'
+              }`}>
+                {video.visibility === 'public' ? 'Public' : 'Private'}
+              </span>
+            </div>
+          </div>
+          <div className="text-sm text-gray-500">
+            {video.visibility === 'public' ? 'Anyone can access this video' : 'Only tenant members can access this video'}
+          </div>
         </div>
 
         {/* Action Buttons */}

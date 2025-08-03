@@ -41,9 +41,9 @@ function App() {
         <Route path="/my-files" element={user ? <MyFilesPage /> : <Navigate to="/login" />} />
         <Route path="/my-videos" element={user ? <MyVideosPage /> : <Navigate to="/login" />} />
         <Route path="/tenants" element={user ? <TenantsPage /> : <Navigate to="/login" />} />
-        <Route path="/file/:id" element={user ? <FilePage /> : <Navigate to="/login" />} />
-        <Route path="/video/:id" element={user ? <VideoPage /> : <Navigate to="/login" />} />
-        <Route path="/video/:id/play" element={user ? <VideoPlayerPage /> : <Navigate to="/login" />} />
+        <Route path="/file/:id" element={<FilePage />} />
+        <Route path="/video/:id" element={<VideoPage />} />
+        <Route path="/video/:id/play" element={<VideoPlayerPage />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </div>

@@ -1,8 +1,8 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
-import { authenticateJWT } from '../middlewares/auth';
-import { handleUpload, getVideoMetadata, getMyFiles, getMyVideos, downloadFile, getFileByPublicId, getVideoByPublicId, downloadVideo, serveVideo, serveVideoThumbnail, getTenants, switchTenant } from '../controllers/uploadController';
+import { authenticateJWT, optionalAuthJWT } from '../middlewares/auth';
+import { handleUpload, getVideoMetadata, getMyFiles, getMyVideos, downloadFile, getFileByPublicId, getVideoByPublicId, downloadVideo, serveVideo, serveVideoThumbnail, getTenants, switchTenant, changeFileVisibility, changeVideoVisibility } from '../controllers/uploadController';
 import { fileSizeLimit } from '../middlewares/fileSizeLimit';
 
 const router = express.Router();
@@ -26,27 +26,33 @@ router.get('/my-files', authenticateJWT, getMyFiles);
 router.get('/my-videos', authenticateJWT, getMyVideos);
 
 // Download file endpoint: GET /download/:id (id is public_id)
-router.get('/download/:id', authenticateJWT, downloadFile);
+router.get('/download/:id', optionalAuthJWT, downloadFile);
 
 // Get file details by public_id
-router.get('/file/:id', authenticateJWT, getFileByPublicId);
+router.get('/file/:id', optionalAuthJWT, getFileByPublicId);
 
 // Get video details by public_id
-router.get('/video/:id', authenticateJWT, getVideoByPublicId);
+router.get('/video/:id', optionalAuthJWT, getVideoByPublicId);
 
 // Download video endpoint: GET /download-video/:id (id is public_id)
-router.get('/download-video/:id', authenticateJWT, downloadVideo);
+router.get('/download-video/:id', optionalAuthJWT, downloadVideo);
 
 // Serve video for playback: GET /serve-video/:id (id is public_id)
-router.get('/serve-video/:id', authenticateJWT, serveVideo);
+router.get('/serve-video/:id', optionalAuthJWT, serveVideo);
 
 // Serve video thumbnail: GET /serve-video-thumbnail/:id (id is public_id)
-router.get('/serve-video-thumbnail/:id', authenticateJWT, serveVideoThumbnail);
+router.get('/serve-video-thumbnail/:id', optionalAuthJWT, serveVideoThumbnail);
 
 // Get all tenants
 router.get('/tenants', authenticateJWT, getTenants);
 
 // Switch tenant
 router.post('/switch-tenant', authenticateJWT, switchTenant);
+
+// Change file visibility
+router.put('/file/:id/visibility', authenticateJWT, changeFileVisibility);
+
+// Change video visibility
+router.put('/video/:id/visibility', authenticateJWT, changeVideoVisibility);
 
 export default router; 
