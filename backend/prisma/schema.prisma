@@ -45,7 +45,6 @@ model File {
   blob_name    String @unique
   type         String
   size         BigInt?
-  status       String   @default("ready")
   visibility   String   @default("public")
   azure_url    String?
   thumb_url    String?
@@ -72,7 +71,6 @@ model Video {
   azure_url  String?
   thumb_url  String?
   size       BigInt?
-  status     String   @default("ready")
   visibility String   @default("public")
   created_at DateTime @default(now())
   tenant     Tenant   @relation(fields: [tenant_id], references: [id])

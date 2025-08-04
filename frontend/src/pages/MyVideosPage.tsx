@@ -12,7 +12,6 @@ interface VideoItem {
   azure_url?: string;
   thumb_url?: string;
   size?: string;
-  status: string;
   visibility: string;
   created_at: string;
   tenant?: { name: string };

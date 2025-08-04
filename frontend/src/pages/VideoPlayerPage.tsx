@@ -12,7 +12,6 @@ interface VideoItem {
   title: string;
   type: string;
   size?: string;
-  status: string;
   visibility: string;
   azure_url?: string;
   thumb_url?: string;
@@ -209,7 +208,7 @@ export default function VideoPlayerPage() {
             <div><span className="font-semibold">Uploaded:</span> {formatDateTime(video.created_at)}</div>
             {video.size && <div><span className="font-semibold">Size:</span> {formatFileSize(video.size)}</div>}
             <div><span className="font-semibold">Type:</span> {video.type}</div>
-            <div><span className="font-semibold">Status:</span> {video.status}</div>
+  
           </div>
         </div>
       </div>

@@ -98,7 +98,6 @@ export async function handleUpload(req: Request, res: Response) {
           azure_url: azureUrl,
           thumb_url: thumbUrl,
           size: BigInt(compressedStats.size),
-          status: 'ready',
           visibility: visibility,
           // created_at will default to now
         },
@@ -155,7 +154,6 @@ export async function handleUpload(req: Request, res: Response) {
           blob_name: azureBlobName,
           type: file.mimetype,
           size: BigInt(compressedStats.size),
-          status: 'ready',
           visibility: visibility,
           azure_url: azureUrl,
         },
@@ -199,7 +197,6 @@ export async function handleUpload(req: Request, res: Response) {
           blob_name: azureBlobName,
           type: file.mimetype,
           size: BigInt(file.size),
-          status: 'ready',
           visibility: visibility,
           azure_url: azureUrl,
         },

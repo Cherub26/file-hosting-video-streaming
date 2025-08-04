@@ -11,7 +11,6 @@ interface FileItem {
   blob_name: string;
   type: string;
   size: string;
-  status: string;
   visibility: string;
   azure_url: string;
   tenant?: { name: string };
