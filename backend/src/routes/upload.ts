@@ -14,7 +14,7 @@ const upload = multer({
 });
 
 // Upload endpoint: POST /upload
-router.post('/upload', authenticateJWT, upload.single('video'), fileSizeLimit, handleUpload);
+router.post('/upload', authenticateJWT, upload.single('file'), fileSizeLimit, handleUpload);
 
 // Metadata endpoint: GET /metadata
 router.get('/metadata', getVideoMetadata);

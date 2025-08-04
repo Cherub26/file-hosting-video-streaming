@@ -17,7 +17,7 @@ export default function UploadPage() {
     setUploading(true);
     try {
       const formData = new FormData();
-      formData.append('video', file);
+      formData.append('file', file);
       formData.append('visibility', visibility);
       const res = await fetch('/api/upload', {
         method: 'POST',
