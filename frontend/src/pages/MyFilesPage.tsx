@@ -53,7 +53,7 @@ export default function MyFilesPage() {
     setChangingVisibility(fileId);
     try {
       const res = await fetch(`/api/file/${fileId}/visibility`, {
-        method: 'PUT',
+        method: 'POST',
         headers: { 
           Authorization: `Bearer ${user?.token}`,
           'Content-Type': 'application/json'

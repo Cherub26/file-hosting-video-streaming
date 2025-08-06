@@ -54,7 +54,7 @@ export default function MyVideosPage() {
     setChangingVisibility(videoId);
     try {
       const res = await fetch(`/api/video/${videoId}/visibility`, {
-        method: 'PUT',
+        method: 'POST',
         headers: { 
           Authorization: `Bearer ${user?.token}`,
           'Content-Type': 'application/json'

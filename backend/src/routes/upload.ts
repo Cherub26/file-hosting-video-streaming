@@ -50,9 +50,9 @@ router.get('/tenants', authenticateJWT, getTenants);
 router.post('/switch-tenant', authenticateJWT, switchTenant);
 
 // Change file visibility
-router.put('/file/:id/visibility', authenticateJWT, changeFileVisibility);
+router.post('/file/:id/visibility', authenticateJWT, changeFileVisibility);
 
 // Change video visibility
-router.put('/video/:id/visibility', authenticateJWT, changeVideoVisibility);
+router.post('/video/:id/visibility', authenticateJWT, changeVideoVisibility);
 
 export default router; 
