@@ -5,6 +5,10 @@ import cors from 'cors';
 import multer from 'multer';
 import authRouter from './routes/auth';
 import uploadRouter from './routes/upload';
+import fileRouter from './routes/fileRoutes';
+import videoRouter from './routes/videoRoutes';
+import tenantRouter from './routes/tenantRoutes';
+import metadataRouter from './routes/metadataRoutes';
 
 dotenv.config();
 
@@ -32,6 +36,10 @@ app.get('/api/health', (req, res) => {
 
 app.use('/api/auth', authRouter);
 app.use('/api', uploadRouter);
+app.use('/api', fileRouter);
+app.use('/api', videoRouter);
+app.use('/api', tenantRouter);
+app.use('/api', metadataRouter);
 
 
 app.listen(PORT, () => {
