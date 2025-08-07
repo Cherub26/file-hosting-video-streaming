@@ -11,7 +11,7 @@ const containerClient = blobServiceClient.getContainerClient(AZURE_CONTAINER_NAM
 
 export async function getMyFiles(req: Request, res: Response) {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     if (!user || !user.id) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -32,7 +32,7 @@ export async function getMyFiles(req: Request, res: Response) {
 
 export async function downloadFile(req: Request, res: Response) {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const publicId = req.params.id;
     if (!publicId) return res.status(400).json({ error: 'Missing file id' });
     
@@ -71,7 +71,7 @@ export async function downloadFile(req: Request, res: Response) {
 
 export async function getFileByPublicId(req: Request, res: Response) {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const publicId = req.params.id;
     if (!publicId) return res.status(400).json({ error: 'Missing file id' });
     
@@ -102,9 +102,13 @@ export async function getFileByPublicId(req: Request, res: Response) {
 }
 
 export async function changeFileVisibility(req: Request, res: Response) {
-  const user = (req as any).user;
+  const user = req.user;
   const { id } = req.params; // public_id
   const { visibility } = req.body;
+
+  if (!user || !user.id) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
 
   if (!visibility || (visibility !== 'public' && visibility !== 'private')) {
     return res.status(400).json({ error: 'Valid visibility value (public or private) is required' });

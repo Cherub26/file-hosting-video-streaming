@@ -1,11 +1,10 @@
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import { UserRole, AuthenticatedUser } from '../types/express';
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret';
-
-export type UserRole = 'Visitor' | 'User' | 'Admin';
 
 // Register a new user
 export async function registerUser(username: string, email: string, password: string, role: UserRole = 'User', tenant_id?: number) {
@@ -45,6 +44,6 @@ export async function loginUser(email: string, password: string) {
 }
 
 // Generate JWT
-export function generateJWT(user: any) {
+export function generateJWT(user: AuthenticatedUser) {
   return jwt.sign({ id: user.id, role: user.role, tenant_id: user.tenant_id }, JWT_SECRET, { expiresIn: '7d' });
 } 

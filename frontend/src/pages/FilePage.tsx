@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../providers/AuthProvider';
 import { FiDownload, FiEye, FiEyeOff } from 'react-icons/fi';
 import { formatDateTime, formatFileSize } from '../utils/format';
+import type { FetchHeaders } from '../types';
 
 interface FileItem {
   id: number;
@@ -33,7 +34,7 @@ export default function FilePage() {
       setLoading(true);
       try {
         // Try to fetch file, with authorization header if user is logged in
-        const headers: any = {};
+        const headers: FetchHeaders = {};
         if (user?.token) {
           headers.Authorization = `Bearer ${user.token}`;
         }
@@ -134,7 +135,7 @@ export default function FilePage() {
         <button
           onClick={async () => {
             try {
-              const headers: any = {};
+              const headers: FetchHeaders = {};
               if (user?.token) {
                 headers.Authorization = `Bearer ${user.token}`;
               }

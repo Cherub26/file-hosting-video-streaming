@@ -41,7 +41,7 @@ export default function RegisterPage() {
       }
       setSuccess('Registration successful! Please log in.');
       setTimeout(() => navigate('/login'), 1500);
-    } catch (err: any) {
+    } catch (err) {
       setError('Registration failed. Please try again.');
     }
   };

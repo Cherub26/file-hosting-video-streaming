@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { registerUser, loginUser, generateJWT } from '../services/authService';
+import { UserRole, AuthenticatedUser } from '../types/express';
 
 export async function register(req: Request, res: Response) {
   const { username, email, password } = req.body;
@@ -30,7 +31,12 @@ export async function login(req: Request, res: Response) {
     if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
-    const token = generateJWT(user);
+    const authenticatedUser: AuthenticatedUser = {
+      id: user.id,
+      role: user.role as UserRole,
+      tenant_id: user.tenant_id
+    };
+    const token = generateJWT(authenticatedUser);
     res.json({ token, user: { id: user.id, username: user.username, email: user.email, role: user.role, tenant_id: user.tenant_id } });
   } catch (err) {
     res.status(500).json({ error: 'Login failed' });

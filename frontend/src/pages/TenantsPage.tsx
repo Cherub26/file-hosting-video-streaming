@@ -37,7 +37,7 @@ export default function TenantsPage() {
           return;
         }
         setTenants(data.tenants);
-      } catch (err: any) {
+      } catch (err) {
         setError('Failed to fetch tenants. Please try again.');
       } finally {
         setLoading(false);

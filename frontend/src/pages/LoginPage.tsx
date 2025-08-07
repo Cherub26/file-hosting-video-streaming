@@ -38,7 +38,7 @@ export default function LoginPage() {
       }
       login({ ...data.user, token: data.token });
       navigate('/upload');
-    } catch (err: any) {
+    } catch (err) {
       setError('Login failed. Please try again.');
     }
   };

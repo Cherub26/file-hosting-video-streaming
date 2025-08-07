@@ -4,7 +4,7 @@ import { Request, Response } from 'express';
 const prisma = new PrismaClient();
 
 export async function getVideoMetadata(req: Request, res: Response) {
-  const user = (req as any).user;
+  const user = req.user;
   const { blobName, videoId } = req.query;
   try {
     let video_id = videoId;

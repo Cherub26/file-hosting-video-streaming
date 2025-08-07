@@ -42,7 +42,7 @@ export default function MyFilesPage() {
           return;
         }
         setFiles(data.files);
-      } catch (err: any) {
+      } catch (err) {
         setError('Failed to fetch files. Please try again.');
       }
     }

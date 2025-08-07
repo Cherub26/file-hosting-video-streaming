@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 export async function getTenants(req: Request, res: Response) {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     if (!user || !user.id) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -37,7 +37,7 @@ export async function getTenants(req: Request, res: Response) {
 
 export async function switchTenant(req: Request, res: Response) {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const { tenant_id } = req.body;
     
     if (!user || !user.id) {

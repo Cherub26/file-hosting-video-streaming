@@ -4,6 +4,7 @@ import { useAuth } from '../providers/AuthProvider';
 import { FiDownload, FiPlay, FiEye, FiEyeOff } from 'react-icons/fi';
 import { formatDateTime, formatFileSize } from '../utils/format';
 import AuthenticatedImage from '../components/AuthenticatedImage';
+import type { FetchHeaders } from '../types';
 
 interface VideoItem {
   id: number;
@@ -33,7 +34,7 @@ export default function VideoPage() {
       setLoading(true);
       try {
         // Try to fetch video, with authorization header if user is logged in
-        const headers: any = {};
+        const headers: FetchHeaders = {};
         if (user?.token) {
           headers.Authorization = `Bearer ${user.token}`;
         }
@@ -80,7 +81,7 @@ export default function VideoPage() {
 
   const handleDownload = async () => {
     try {
-      const headers: any = {};
+      const headers: FetchHeaders = {};
       if (user?.token) {
         headers.Authorization = `Bearer ${user.token}`;
       }

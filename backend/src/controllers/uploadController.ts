@@ -19,8 +19,13 @@ export async function handleUpload(req: Request, res: Response) {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
   }
+  
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  
   const file = req.file;
-  const user = (req as any).user;
+  const user = req.user;
   const visibility = req.body.visibility || 'public'; // Default to public if not specified
   let blobRecord;
   try {

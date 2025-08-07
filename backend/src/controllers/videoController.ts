@@ -11,7 +11,7 @@ const containerClient = blobServiceClient.getContainerClient(AZURE_CONTAINER_NAM
 
 export async function getMyVideos(req: Request, res: Response) {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     if (!user || !user.id) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -32,7 +32,7 @@ export async function getMyVideos(req: Request, res: Response) {
 
 export async function getVideoByPublicId(req: Request, res: Response) {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const publicId = req.params.id;
     if (!publicId) return res.status(400).json({ error: 'Missing video id' });
     const video = await prisma.video.findFirst({ 
@@ -60,7 +60,7 @@ export async function getVideoByPublicId(req: Request, res: Response) {
 
 export async function downloadVideo(req: Request, res: Response) {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const publicId = req.params.id;
     if (!publicId) return res.status(400).json({ error: 'Missing video id' });
     
@@ -112,7 +112,7 @@ export async function downloadVideo(req: Request, res: Response) {
 
 export async function serveVideo(req: Request, res: Response) {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const publicId = req.params.id;
     if (!publicId) return res.status(400).json({ error: 'Missing video id' });
     
@@ -165,7 +165,7 @@ export async function serveVideo(req: Request, res: Response) {
 
 export async function serveVideoThumbnail(req: Request, res: Response) {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const publicId = req.params.id;
     if (!publicId) return res.status(400).json({ error: 'Missing video id' });
     
@@ -217,9 +217,13 @@ export async function serveVideoThumbnail(req: Request, res: Response) {
 }
 
 export async function changeVideoVisibility(req: Request, res: Response) {
-  const user = (req as any).user;
+  const user = req.user;
   const { id } = req.params; // public_id
   const { visibility } = req.body;
+
+  if (!user || !user.tenant_id) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
 
   if (!visibility || (visibility !== 'public' && visibility !== 'private')) {
     return res.status(400).json({ error: 'Valid visibility value (public or private) is required' });

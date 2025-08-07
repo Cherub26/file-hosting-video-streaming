@@ -43,7 +43,7 @@ export default function MyVideosPage() {
           return;
         }
         setVideos(data.videos);
-      } catch (err: any) {
+      } catch (err) {
         setError('Failed to fetch videos. Please try again.');
       }
     }
