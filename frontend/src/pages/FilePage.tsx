@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../providers/AuthProvider';
-import { FiDownload, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiDownload, FiEye, FiEyeOff, FiImage } from 'react-icons/fi';
 import { formatDateTime, formatFileSize } from '../utils/format';
+import { isImageFile } from '../utils/fileUtils';
+import PhotoPreviewModal from '../components/PhotoPreviewModal';
 import type { FetchHeaders } from '../types';
 
 interface FileItem {
@@ -23,6 +25,7 @@ export default function FilePage() {
   const [file, setFile] = useState<FileItem | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [showPreview, setShowPreview] = useState(false);
 
 
 
@@ -132,8 +135,53 @@ export default function FilePage() {
           </div>
         </div>
         
-        <button
-          onClick={async () => {
+        <div className="flex gap-3">
+          {isImageFile(file.type) && (
+            <button
+              onClick={() => setShowPreview(true)}
+              className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-300"
+            >
+              <FiImage size={20} /> Preview
+            </button>
+          )}
+          
+          <button
+            onClick={async () => {
+              try {
+                const headers: FetchHeaders = {};
+                if (user?.token) {
+                  headers.Authorization = `Bearer ${user.token}`;
+                }
+                
+                const res = await fetch(`/api/download/${file.public_id}`, { headers });
+                if (!res.ok) {
+                  alert('Failed to download file.');
+                  return;
+                }
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = file.original_name;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+              } catch {
+                alert('Failed to download file.');
+              }
+            }}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
+          >
+            <FiDownload size={20} /> Download
+          </button>
+        </div>
+
+        <PhotoPreviewModal
+          isOpen={showPreview}
+          onClose={() => setShowPreview(false)}
+          file={file}
+          onDownload={async () => {
             try {
               const headers: FetchHeaders = {};
               if (user?.token) {
@@ -158,10 +206,7 @@ export default function FilePage() {
               alert('Failed to download file.');
             }
           }}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
-        >
-          <FiDownload size={20} /> Download
-        </button>
+        />
       </div>
     </div>
   );

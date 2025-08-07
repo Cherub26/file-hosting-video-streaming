@@ -69,6 +69,53 @@ export async function downloadFile(req: Request, res: Response) {
   }
 }
 
+export async function serveFile(req: Request, res: Response) {
+  try {
+    const user = req.user;
+    const publicId = req.params.id;
+    if (!publicId) return res.status(400).json({ error: 'Missing file id' });
+    
+    const file = await prisma.file.findFirst({ 
+      where: { public_id: publicId }
+    });
+    
+    if (!file) return res.status(404).json({ error: 'File not found' });
+    
+    // Check access based on visibility
+    if (file.visibility === 'private') {
+      // Private files require authentication and tenant access
+      if (!user) {
+        return res.status(401).json({ error: 'Authentication required to access private files' });
+      }
+      if (user.tenant_id !== file.tenant_id) {
+        return res.status(403).json({ 
+          error: 'Forbidden - Access denied to private files outside your tenant'
+        });
+      }
+    }
+    // Public files can be accessed by anyone
+    
+    const blockBlobClient = containerClient.getBlockBlobClient(file.blob_name);
+    const downloadResponse = await blockBlobClient.download();
+    
+    // Set headers for inline display (no Content-Disposition attachment)
+    res.setHeader('Content-Type', file.type || 'application/octet-stream');
+    if (file.visibility === 'private') {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    } else {
+      res.setHeader('Cache-Control', 'public, max-age=3600'); // 1 hour for public files
+    }
+    
+    if (downloadResponse.readableStreamBody) {
+      downloadResponse.readableStreamBody.pipe(res);
+    } else {
+      res.status(500).json({ error: 'Failed to serve file' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to serve file', details: (err && typeof err === 'object' && 'message' in err) ? (err as any).message : String(err) });
+  }
+}
+
 export async function getFileByPublicId(req: Request, res: Response) {
   try {
     const user = req.user;

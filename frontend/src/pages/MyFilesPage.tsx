@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../providers/AuthProvider';
-import { FiDownload, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiDownload, FiEye, FiEyeOff, FiImage } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import { formatDateTime, formatFileSize } from '../utils/format';
+import { isImageFile } from '../utils/fileUtils';
+import PhotoPreviewModal from '../components/PhotoPreviewModal';
 
 interface FileItem {
   id: number;
@@ -21,6 +23,7 @@ export default function MyFilesPage() {
   const [files, setFiles] = useState<FileItem[]>([]);
   const [error, setError] = useState('');
   const [changingVisibility, setChangingVisibility] = useState<string | null>(null);
+  const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
 
   useEffect(() => {
     async function fetchFiles() {
@@ -140,6 +143,17 @@ export default function MyFilesPage() {
                           <FiEyeOff size={20} />
                         )}
                       </button>
+                      
+                      {isImageFile(file.type) && (
+                        <button
+                          onClick={() => setPreviewFile(file)}
+                          className="text-green-600 hover:text-green-800 p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-green-300"
+                          title="Preview image"
+                        >
+                          <FiImage size={20} />
+                        </button>
+                      )}
+                      
                       <button
                         onClick={async () => {
                           try {
@@ -175,6 +189,34 @@ export default function MyFilesPage() {
             </table>
           </div>
         )}
+        
+        <PhotoPreviewModal
+          isOpen={!!previewFile}
+          onClose={() => setPreviewFile(null)}
+          file={previewFile}
+          onDownload={previewFile ? async () => {
+            try {
+              const res = await fetch(`/api/download/${previewFile.public_id}`, {
+                headers: { Authorization: `Bearer ${user?.token}` },
+              });
+              if (!res.ok) {
+                alert('Failed to download file.');
+                return;
+              }
+              const blob = await res.blob();
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = previewFile.original_name;
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              window.URL.revokeObjectURL(url);
+            } catch {
+              alert('Failed to download file.');
+            }
+          } : undefined}
+        />
       </div>
     </div>
   );
