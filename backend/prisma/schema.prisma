@@ -51,7 +51,6 @@ model File {
   created_at   DateTime @default(now())
   tenant       Tenant   @relation(fields: [tenant_id], references: [id])
   fileAccess   FileAccess[]
-  metadata     Metadata[]
 }
 
 model FileAccess {
@@ -72,10 +71,16 @@ model Video {
   thumb_url  String?
   size       BigInt?
   visibility String   @default("public")
+  duration   Float?   // Duration in seconds
+  width      Int?     // Video width in pixels
+  height     Int?     // Video height in pixels
+  frame_rate String?  // Frame rate (e.g., "30/1", "29.97")
+  codec      String?  // Video codec (e.g., "h264", "hevc")
+  bit_rate   String?  // Bit rate
+  format_name String? // Format name (e.g., "mov,mp4,m4a,3gp,3g2,mj2")
   created_at DateTime @default(now())
   tenant     Tenant   @relation(fields: [tenant_id], references: [id])
   accessLogs AccessLog[]
-  metadata   Metadata[]
 }
 
 model Blob {
@@ -97,13 +102,4 @@ model AccessLog {
   video      Video    @relation(fields: [video_id], references: [id])
 }
 
-model Metadata {
-  id         Int      @id @default(autoincrement())
-  video_id   Int?
-  file_id    Int?
-  key        String
-  value      String?
-  created_at DateTime @default(now())
-  video      Video?   @relation(fields: [video_id], references: [id])
-  file       File?    @relation(fields: [file_id], references: [id])
-}
+

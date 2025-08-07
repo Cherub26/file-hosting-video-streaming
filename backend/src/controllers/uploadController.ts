@@ -5,7 +5,7 @@ import ffmpeg from 'fluent-ffmpeg';
 import fs from 'fs';
 import { Request, Response } from 'express';
 import { compressVideo, generateCompressedThumbnail, extractVideoMetadata } from '../services/videoService';
-import { compressImage, generateImageThumbnail, extractImageMetadata, isImageFile } from '../services/imageService';
+import { compressImage, generateImageThumbnail, isImageFile } from '../services/imageService';
 import { Readable } from 'stream';
 import { convertBigIntToString } from '../utils/helpers';
 
@@ -73,7 +73,7 @@ export async function handleUpload(req: Request, res: Response) {
       // 5. Get compressed file size
       const compressedStats = fs.statSync(compressedPath);
 
-      // 5.5 Insert into videos table
+      // 5.5 Insert into videos table with metadata
       const videoRecord = await prisma.video.create({
         data: {
           tenant_id: user.tenant_id,
@@ -83,19 +83,17 @@ export async function handleUpload(req: Request, res: Response) {
           thumb_url: thumbUrl,
           size: BigInt(compressedStats.size),
           visibility: visibility,
+          // Video metadata fields
+          duration: videoMetadata.duration ? parseFloat(videoMetadata.duration.toString()) : null,
+          width: videoMetadata.width ? parseInt(videoMetadata.width.toString()) : null,
+          height: videoMetadata.height ? parseInt(videoMetadata.height.toString()) : null,
+          frame_rate: videoMetadata.frameRate ? videoMetadata.frameRate.toString() : null,
+          codec: videoMetadata.codec ? videoMetadata.codec.toString() : null,
+          bit_rate: videoMetadata.bitRate ? videoMetadata.bitRate.toString() : null,
+          format_name: videoMetadata.formatName ? videoMetadata.formatName.toString() : null,
           // created_at will default to now
         },
       });
-
-      // 6. Store metadata
-      const metaEntries = Object.entries(videoMetadata).map(([key, value]) => ({
-        video_id: videoRecord.id,
-        key,
-        value: value?.toString() || null,
-      }));
-      if (metaEntries.length > 0) {
-        await prisma.metadata.createMany({ data: metaEntries });
-      }
 
       // 7. Clean up local temp files
       fs.unlinkSync(file.path);
@@ -118,19 +116,16 @@ export async function handleUpload(req: Request, res: Response) {
       const compressedPath = file.path + '-compressed.jpg';
       await compressImage(file.path, compressedPath, 80);
 
-      // 2. Extract and store image metadata
-      const imageMetadata = await extractImageMetadata(compressedPath);
-
-      // 3. Upload compressed image to Azure
+      // 2. Upload compressed image to Azure
       azureBlobName = uniquePrefix + file.originalname.replace(/\.[^/.]+$/, '.jpg');
       const imageBlockBlobClient = containerClient.getBlockBlobClient(azureBlobName);
       await imageBlockBlobClient.uploadFile(compressedPath);
       azureUrl = imageBlockBlobClient.url;
 
-      // 4. Get compressed file size
+      // 3. Get compressed file size
       const compressedStats = fs.statSync(compressedPath);
 
-      // 5. Insert into files table
+      // 4. Insert into files table
       const fileRecord = await prisma.file.create({
         data: {
           tenant_id: user.tenant_id,
@@ -143,17 +138,7 @@ export async function handleUpload(req: Request, res: Response) {
         },
       });
 
-      // 6. Store metadata for the image
-      const metaEntries = Object.entries(imageMetadata).map(([key, value]) => ({
-        file_id: fileRecord.id,
-        key,
-        value: value?.toString() || null,
-      }));
-      if (metaEntries.length > 0) {
-        await prisma.metadata.createMany({ data: metaEntries });
-      }
-
-      // 7. Clean up local temp files
+      // 5. Clean up local temp files
       fs.unlinkSync(file.path);
       fs.unlinkSync(compressedPath);
 

@@ -15,6 +15,13 @@ interface VideoItem {
   visibility: string;
   created_at: string;
   tenant?: { name: string };
+  duration?: number;
+  width?: number;
+  height?: number;
+  frame_rate?: string;
+  codec?: string;
+  bit_rate?: string;
+  format_name?: string;
 }
 
 export default function MyVideosPage() {

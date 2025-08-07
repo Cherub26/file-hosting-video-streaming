@@ -16,6 +16,13 @@ interface VideoItem {
   azure_url?: string;
   thumb_url?: string;
   created_at: string;
+  duration?: number;
+  width?: number;
+  height?: number;
+  frame_rate?: string;
+  codec?: string;
+  bit_rate?: string;
+  format_name?: string;
 }
 
 export default function VideoPage() {
